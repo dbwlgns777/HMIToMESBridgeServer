@@ -6,7 +6,7 @@ import com.zes.hmitomesbridgeserver.common.ZES_returnService;
 import com.zes.hmitomesbridgeserver.dto.ZES_facilityIctRequest;
 import com.zes.hmitomesbridgeserver.mapper.ZES_facilityMapper;
 import com.zes.hmitomesbridgeserver.model.ZES_facilityInfo;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
