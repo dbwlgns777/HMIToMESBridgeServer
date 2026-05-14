@@ -8,11 +8,11 @@ import java.util.List;
 public class ZES_dbWorkItemProvider implements ZES_opcUaWorkItemProvider
 {
     @Override
-    public List<ZES_opcUaWorkItem> ZES_getWorkItemsByEquipmentNo(int equipmentNo)
+    public List<ZES_opcUaWorkItem> ZES_getWorkItemsByIctNumber(String ictNumber)
     {
-        // TODO: mapper를 주입해서 DB 조회 결과를 WorkItem으로 변환하세요.
+        // TODO: ictNumber -> facility/process -> work order를 DB 조회해 변환
         return List.of(
-                new ZES_opcUaWorkItem("DB-NODATA", "해당 설비에 내려진 작업지시서가 없습니다", "", "", "", (short) 0)
+                new ZES_opcUaWorkItem("", "해당 설비에 내려진 작업지시서가 없습니다", "", "", (short) 0)
         );
     }
 }
