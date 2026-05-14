@@ -189,7 +189,17 @@ public class ZES_workOrderKioskService
             }
 
             JSONObject ZES_lv_data = (JSONObject) ZES_lv_monitoringResponse.get("data");
-            JSONArray ZES_lv_monitoringTypeCodes = (JSONArray) ZES_lv_data.get("monitoringTypeCodes");
+            Object ZES_lv_codesObj = ZES_lv_data.get("monitoringTypeCodes");
+            List<String> ZES_lv_monitoringTypeCodes = new ArrayList<>();
+            if (ZES_lv_codesObj instanceof JSONArray ZES_lv_array)
+            {
+                for (Object v : ZES_lv_array) ZES_lv_monitoringTypeCodes.add(String.valueOf(v));
+            }
+            else if (ZES_lv_codesObj instanceof List<?> ZES_lv_list)
+            {
+                for (Object v : ZES_lv_list) ZES_lv_monitoringTypeCodes.add(String.valueOf(v));
+            }
+
             JSONObject ZES_lv_result = new JSONObject();
             ZES_lv_result.put("facilityCode", ZES_lv_data.get("facilityCode"));
 
