@@ -27,6 +27,15 @@ public class ZES_workOrderKioskService
     {
         try
         {
+            if (page == null || size == null || page < 1 || size < 1)
+            {
+                return ZES_gv_returnService.ZES_returnToFormat(ZES_Enum.ZES_VALID_ERROR, "page/size must be >= 1", null);
+            }
+            if (processCode == null || processCode.trim().isEmpty())
+            {
+                return ZES_gv_returnService.ZES_returnToFormat(ZES_Enum.ZES_VALID_ERROR, "processCode is required", null);
+            }
+
             List<String> ZES_lv_workOrderCodeList = ZES_workingHistoryOrderFilter(processCode, LocalDate.now().toString());
             JSONObject ZES_lv_response = new JSONObject();
             JSONArray ZES_lv_array = new JSONArray();
