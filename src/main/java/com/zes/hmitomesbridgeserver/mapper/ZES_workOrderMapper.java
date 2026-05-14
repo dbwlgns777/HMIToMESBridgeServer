@@ -10,6 +10,16 @@ import java.util.Map;
 @Mapper
 public interface ZES_workOrderMapper
 {
+    @Select("""
+            select work_order_code, unique_work_order_number, instruction_date, orders_code, deadline, target_production,
+                   work_statement, facility_code, product_code
+            from ZES_Authentication.zes_work_order_info
+            where work_order_code = #{workOrderCode}
+              and statement = 'active'
+            limit 1
+            """)
+    Map<String, Object> ZES_selectWorkOrderByCode(@Param("workOrderCode") String workOrderCode);
+
     @Select("select facility_code from ZES_Authentication.zes_facility_info where ict_number = #{ictNumber} and statement = 'active'")
     List<String> ZES_selectFacilityCodesByIctNumber(@Param("ictNumber") String ictNumber);
 
@@ -18,6 +28,9 @@ public interface ZES_workOrderMapper
 
     @Select("select product_code, product_name, serial_code, process_code, cavity from ZES_Authentication.zes_product_info where process_code in (${processCodes}) and statement = 'active'")
     List<Map<String, Object>> ZES_selectProductsByProcessCodes(@Param("processCodes") String processCodes);
+    @Select("select product_code, product_name, serial_code, process_code, cavity from ZES_Authentication.zes_product_info where product_code = #{productCode} and statement = 'active' limit 1")
+    Map<String, Object> ZES_selectProductByProductCode(@Param("productCode") String productCode);
+
 
     @Select("""
             select work_order_code, unique_work_order_number, instruction_date, orders_code, deadline, target_production,

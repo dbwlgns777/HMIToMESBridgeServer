@@ -67,26 +67,67 @@ public class ZES_workOrderKioskService
         JSONObject ZES_lv_json = new JSONObject();
         ZES_lv_json.put("workOrderCode", workOrderCode);
 
-        List<Map<String, Object>> codes = ZES_gv_workOrderMapper.ZES_selectNotEndedWorkOrdersByProductCodes("'DUMMY'");
-        // NOTE: work_order_code 단건 조회 mapper가 없어서 아래는 필요한 컬럼 보강 후 교체 권장.
+        Map<String, Object> ZES_lv_workOrder = ZES_gv_workOrderMapper.ZES_selectWorkOrderByCode(workOrderCode);
+        if (ZES_lv_workOrder == null)
+        {
+            return ZES_lv_json;
+        }
 
-        ZES_lv_json.put("uniqueWorkOrderNumber", "");
-        ZES_lv_json.put("instructionDate", "");
-        ZES_lv_json.put("ordersCode", "");
-        ZES_lv_json.put("deadline", "");
-        ZES_lv_json.put("targetProduction", "0");
-        ZES_lv_json.put("workStatement", "");
-        ZES_lv_json.put("facilityCode", "");
-        ZES_lv_json.put("facilityName", "");
-        ZES_lv_json.put("productCode", "");
-        ZES_lv_json.put("productName", "");
-        ZES_lv_json.put("serialCode", "");
-        ZES_lv_json.put("processCode", "");
-        ZES_lv_json.put("processName", "");
-        ZES_lv_json.put("cavity", 1);
-        ZES_lv_json.put("totalGoodQuantity", 0);
-        ZES_lv_json.put("totalDefectQuantity", 0);
-        ZES_lv_json.put("dataExistence", false);
+        String ZES_lv_facilityCode = String.valueOf(ZES_lv_workOrder.getOrDefault("facility_code", ""));
+        String ZES_lv_productCode = String.valueOf(ZES_lv_workOrder.getOrDefault("product_code", ""));
+
+        ZES_lv_json.put("uniqueWorkOrderNumber", ZES_lv_workOrder.getOrDefault("unique_work_order_number", ""));
+        ZES_lv_json.put("instructionDate", ZES_lv_workOrder.getOrDefault("instruction_date", ""));
+        ZES_lv_json.put("ordersCode", ZES_lv_workOrder.getOrDefault("orders_code", ""));
+        ZES_lv_json.put("deadline", ZES_lv_workOrder.getOrDefault("deadline", ""));
+        ZES_lv_json.put("targetProduction", String.valueOf(ZES_lv_workOrder.getOrDefault("target_production", "0")));
+        ZES_lv_json.put("workStatement", ZES_lv_workOrder.getOrDefault("work_statement", ""));
+        ZES_lv_json.put("facilityCode", ZES_lv_facilityCode);
+
+        Map<String, Object> ZES_lv_facilityInfo = ZES_gv_workOrderMapper.ZES_selectFacilityByFacilityCode(ZES_lv_facilityCode);
+        ZES_lv_json.put("facilityName", ZES_lv_facilityInfo == null ? "" : ZES_lv_facilityInfo.getOrDefault("facility_name", ""));
+
+        Map<String, Object> ZES_lv_productInfo = ZES_gv_workOrderMapper.ZES_selectProductByProductCode(ZES_lv_productCode);
+
+        if (ZES_lv_productInfo != null)
+        {
+            String ZES_lv_processCode = String.valueOf(ZES_lv_productInfo.getOrDefault("process_code", ""));
+            ZES_lv_json.put("productCode", ZES_lv_productInfo.getOrDefault("product_code", ""));
+            ZES_lv_json.put("productName", ZES_lv_productInfo.getOrDefault("product_name", ""));
+            ZES_lv_json.put("serialCode", ZES_lv_productInfo.getOrDefault("serial_code", ""));
+            ZES_lv_json.put("processCode", ZES_lv_processCode);
+            ZES_lv_json.put("cavity", ZES_lv_productInfo.getOrDefault("cavity", "1"));
+
+            Map<String, Object> ZES_lv_process = ZES_gv_workOrderMapper.ZES_selectProcessTypeByProcessCode(ZES_lv_processCode);
+            ZES_lv_json.put("processName", ZES_lv_process == null ? "" : ZES_lv_process.getOrDefault("process_name", ""));
+
+            List<Map<String, Object>> ZES_lv_histories = ZES_gv_workOrderMapper.ZES_selectWorkHistoryByWorkOrderCode(workOrderCode);
+            double ZES_lv_totalGood = 0;
+            double ZES_lv_totalDefect = 0;
+            for (Map<String, Object> h : ZES_lv_histories)
+            {
+                ZES_lv_totalGood += Double.parseDouble(String.valueOf(h.getOrDefault("good_quantity", "0")));
+                JSONObject ZES_lv_def = ZES_findByDefectiveQuantityInfo(String.valueOf(h.get("work_history_code")), ZES_lv_processCode);
+                JSONObject ZES_lv_defData = (JSONObject) ZES_lv_def.get("data");
+                ZES_lv_totalDefect += Double.parseDouble(String.valueOf(ZES_lv_defData.getOrDefault("totalDefectQuantity", "0")));
+            }
+            ZES_lv_json.put("totalGoodQuantity", ZES_lv_totalGood);
+            ZES_lv_json.put("totalDefectQuantity", ZES_lv_totalDefect);
+            ZES_lv_json.put("dataExistence", !ZES_lv_histories.isEmpty());
+        }
+        else
+        {
+            ZES_lv_json.put("productCode", "");
+            ZES_lv_json.put("productName", "");
+            ZES_lv_json.put("serialCode", "");
+            ZES_lv_json.put("processCode", "");
+            ZES_lv_json.put("processName", "");
+            ZES_lv_json.put("cavity", 1);
+            ZES_lv_json.put("totalGoodQuantity", 0);
+            ZES_lv_json.put("totalDefectQuantity", 0);
+            ZES_lv_json.put("dataExistence", false);
+        }
+
         return ZES_lv_json;
     }
 
