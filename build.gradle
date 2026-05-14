@@ -24,6 +24,10 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-jdbc'
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.6.0'
     implementation 'com.alibaba:fastjson:1.2.83'
+    implementation 'org.eclipse.milo:sdk-client:0.6.15'
+    implementation 'org.slf4j:slf4j-simple:2.0.12'
+    implementation 'org.eclipse.milo:stack-server:0.6.14'
+    implementation 'org.eclipse.milo:sdk-server:0.6.14'
 
     runtimeOnly 'com.mysql:mysql-connector-j'
 
@@ -32,4 +36,13 @@ dependencies {
 
 tasks.named('test') {
     useJUnitPlatform()
+}
+
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+tasks.withType(JavaExec).configureEach {
+    jvmArgs '-Dfile.encoding=UTF-8', '-Dsun.stdout.encoding=UTF-8', '-Dsun.stderr.encoding=UTF-8', '-Dsun.jnu.encoding=UTF-8'
 }
