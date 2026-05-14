@@ -1,0 +1,27 @@
+spring:
+  config:
+    import: optional:file:./db_config/mysql.config
+  datasource:
+    url: ${jdbcUrl:jdbc:mysql://10.0.1.109:8989/ZES_Authentication?characterEncoding=UTF-8&serverTimezone=Asia/Seoul}
+    username: ${username:zestech}
+    password: ${password:zes_eng12#$}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: ${maximumPoolSize:10}
+      minimum-idle: ${minimumIdle:5}
+      idle-timeout: ${idleTimeout:30000}
+      max-lifetime: ${maxLifetime:600000}
+      connection-timeout: ${connectionTimeout:30000}
+
+mybatis:
+  type-aliases-package: com.zes.hmitomesbridgeserver.model
+
+server:
+  port: 8080
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: alpha
