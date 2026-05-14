@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zes.bridge.mapper.ZesFacilityMapper">
+
+    <resultMap id="facilityInfoResultMap" type="com.zes.bridge.model.ZesFacilityInfo">
+        <id property="id" column="id"/>
+        <result property="companyCode" column="company_code"/>
+        <result property="statement" column="statement"/>
+        <result property="facilityCode" column="facility_code"/>
+        <result property="facilityName" column="facility_name"/>
+    </resultMap>
+
+    <select id="selectActiveFacilitiesByCompanyCode" resultMap="facilityInfoResultMap">
+        select *
+        from ZES_Authentication.zes_facility_info
+        where company_code = #{companyCode}
+          and statement = 'active'
+    </select>
+</mapper>
