@@ -14,8 +14,7 @@ spring:
       connection-timeout: ${connectionTimeout:30000}
 
 mybatis:
-  mapper-locations: classpath:mybatis/*.xml
-  type-aliases-package: com.zes.authentication.model
+  type-aliases-package: com.zes.hmitomesbridgeserver.model
 
 server:
   port: 8080
