@@ -148,8 +148,23 @@ public class ZES_workOrderKioskService
         }
         catch (Exception e)
         {
-            return ZES_gv_returnService.ZES_returnToFormat(ZES_Enum.ZES_SERVER_ERROR,
-                    "DB connection timeout or unavailable: " + e.getClass().getSimpleName(), null);
+            Throwable ZES_lv_root = e;
+            while (ZES_lv_root.getCause() != null)
+            {
+                ZES_lv_root = ZES_lv_root.getCause();
+            }
+
+            String ZES_lv_message;
+            if (ZES_lv_root.getClass().getSimpleName().contains("ConnectException"))
+            {
+                ZES_lv_message = "DB server connection timeout. Check DB host/port/network.";
+            }
+            else
+            {
+                ZES_lv_message = "DB query failed: " + ZES_lv_root.getClass().getSimpleName();
+            }
+
+            return ZES_gv_returnService.ZES_returnToFormat(ZES_Enum.ZES_SERVER_ERROR, ZES_lv_message, null);
         }
     }
 
