@@ -127,6 +127,15 @@ public class ZES_opcUaServerRunner implements ApplicationRunner
         addStringNode(nodeContext, nodeManager, server, rootFolder, nsIndex, "LS_EXP2/workReport/detail/processDetail", "processDetail", ZES_lv_item.processName());
         addStringNode(nodeContext, nodeManager, server, rootFolder, nsIndex, "LS_EXP2/workReport/detail/workdeadlineDetail", "workdeadlineDetail", ZES_lv_item.deadline());
 
+        addInt16RwNode(nodeContext, nodeManager, server, rootFolder, nsIndex, "LS_EXP2/workReportCurrentPage", "workReportCurrentPage", (short) 1);
+        addInt16Node(nodeContext, nodeManager, server, rootFolder, nsIndex, "LS_EXP2/workReportTotalPage", "workReportTotalPage", (short) 1);
+        addInt16RwNode(nodeContext, nodeManager, server, rootFolder, nsIndex, "LS_EXP2/workReportSelectedRow", "workReportSelectedRow", (short) 1);
+
+        addStringNode(nodeContext, nodeManager, server, rootFolder, nsIndex, "LS_EXP2/workReport/row1/productcode", "productcode_row1", ZES_lv_item.productCode());
+        addStringNode(nodeContext, nodeManager, server, rootFolder, nsIndex, "LS_EXP2/workReport/row1/productname", "productname_row1", ZES_lv_item.productName());
+        addStringNode(nodeContext, nodeManager, server, rootFolder, nsIndex, "LS_EXP2/workReport/row1/process", "process_row1", ZES_lv_item.processName());
+        addStringNode(nodeContext, nodeManager, server, rootFolder, nsIndex, "LS_EXP2/workReport/row1/workdeadline", "workdeadline_row1", ZES_lv_item.deadline());
+
         UaVariableNode targetNode = UaVariableNode.builder(nodeContext)
                 .setNodeId(new NodeId(nsIndex, "LS_EXP2/workReport/detail/targetQuantityDetail"))
                 .setBrowseName(new QualifiedName(nsIndex, "targetQuantityDetail"))
@@ -151,6 +160,41 @@ public class ZES_opcUaServerRunner implements ApplicationRunner
         node.setAccessLevel(AccessLevel.toValue(AccessLevel.READ_WRITE));
         node.setUserAccessLevel(AccessLevel.toValue(AccessLevel.READ_WRITE));
         return node;
+    }
+
+
+    private void addInt16Node(UaNodeContext nodeContext, NodeManager<UaNode> nodeManager, OpcUaServer server, UaFolderNode rootFolder,
+                              UShort nsIndex, String nodeId, String browseName, short value)
+    {
+        UaVariableNode node = UaVariableNode.builder(nodeContext)
+                .setNodeId(new NodeId(nsIndex, nodeId))
+                .setBrowseName(new QualifiedName(nsIndex, browseName))
+                .setDisplayName(LocalizedText.english(browseName))
+                .setDataType(Identifiers.Int16)
+                .setTypeDefinition(Identifiers.BaseDataVariableType)
+                .build();
+        node.setAccessLevel(AccessLevel.toValue(AccessLevel.READ_ONLY));
+        node.setUserAccessLevel(AccessLevel.toValue(AccessLevel.READ_ONLY));
+        node.setValue(new DataValue(new Variant(value)));
+        nodeManager.addNode(node);
+        nodeManager.addReferences(new Reference(rootFolder.getNodeId(), Identifiers.Organizes, node.getNodeId().expanded(), true), server.getNamespaceTable());
+    }
+
+    private void addInt16RwNode(UaNodeContext nodeContext, NodeManager<UaNode> nodeManager, OpcUaServer server, UaFolderNode rootFolder,
+                                UShort nsIndex, String nodeId, String browseName, short value)
+    {
+        UaVariableNode node = UaVariableNode.builder(nodeContext)
+                .setNodeId(new NodeId(nsIndex, nodeId))
+                .setBrowseName(new QualifiedName(nsIndex, browseName))
+                .setDisplayName(LocalizedText.english(browseName))
+                .setDataType(Identifiers.Int16)
+                .setTypeDefinition(Identifiers.BaseDataVariableType)
+                .build();
+        node.setAccessLevel(AccessLevel.toValue(AccessLevel.READ_WRITE));
+        node.setUserAccessLevel(AccessLevel.toValue(AccessLevel.READ_WRITE));
+        node.setValue(new DataValue(new Variant(value)));
+        nodeManager.addNode(node);
+        nodeManager.addReferences(new Reference(rootFolder.getNodeId(), Identifiers.Organizes, node.getNodeId().expanded(), true), server.getNamespaceTable());
     }
 
     private void addStringNode(UaNodeContext nodeContext, NodeManager<UaNode> nodeManager, OpcUaServer server, UaFolderNode rootFolder,
