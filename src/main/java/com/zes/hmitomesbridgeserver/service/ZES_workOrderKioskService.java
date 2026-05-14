@@ -177,6 +177,46 @@ public class ZES_workOrderKioskService
         }
     }
 
+
+    public JSONObject ZES_kioskActiveWorkOrderListByIctNumber(Integer page, Integer size, String ictNumber)
+    {
+        try
+        {
+            JSONObject ZES_lv_monitoringResponse = ZES_resolveMonitoringTypeCodesByIctNumber(ictNumber);
+            if (!"ZES_SUCCESS".equals(String.valueOf(ZES_lv_monitoringResponse.get("code"))))
+            {
+                return ZES_lv_monitoringResponse;
+            }
+
+            JSONObject ZES_lv_data = (JSONObject) ZES_lv_monitoringResponse.get("data");
+            JSONArray ZES_lv_monitoringTypeCodes = (JSONArray) ZES_lv_data.get("monitoringTypeCodes");
+            JSONObject ZES_lv_result = new JSONObject();
+            ZES_lv_result.put("facilityCode", ZES_lv_data.get("facilityCode"));
+
+            JSONArray ZES_lv_rows = new JSONArray();
+            for (Object row : ZES_lv_monitoringTypeCodes)
+            {
+                String ZES_lv_processCode = String.valueOf(row);
+                if ("total".equalsIgnoreCase(ZES_lv_processCode))
+                {
+                    continue;
+                }
+
+                JSONObject ZES_lv_workOrderResponse = ZES_kioskActiveWorkOrderList(page, size, ZES_lv_processCode);
+                JSONObject ZES_lv_wrap = new JSONObject();
+                ZES_lv_wrap.put("processCode", ZES_lv_processCode);
+                ZES_lv_wrap.put("workOrders", ZES_lv_workOrderResponse.get("data"));
+                ZES_lv_rows.add(ZES_lv_wrap);
+            }
+
+            ZES_lv_result.put("row", ZES_lv_rows);
+            return ZES_gv_returnService.ZES_returnToFormat(ZES_Enum.ZES_SUCCESS, "success", ZES_lv_result);
+        }
+        catch (Exception e)
+        {
+            return ZES_gv_returnService.ZES_returnToFormat(ZES_Enum.ZES_SERVER_ERROR, e.getMessage(), null);
+        }
+    }
     public List<String> ZES_workingHistoryOrderFilter(String code, String date)
     {
         List<String> ZES_lv_processCodes = Arrays.stream(code.split(",")).map(String::trim).filter(v -> !v.isEmpty()).toList();
