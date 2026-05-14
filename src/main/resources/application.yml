@@ -1,15 +1,21 @@
 spring:
+  config:
+    import: optional:file:./db_config/mysql.config
   datasource:
-    url: jdbc:mysql://localhost:3306/ZES_Authentication?serverTimezone=UTC&characterEncoding=UTF-8
-    username: root
-    password: root
+    url: ${jdbcUrl}
+    username: ${username}
+    password: ${password}
     driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: ${maximumPoolSize:10}
+      minimum-idle: ${minimumIdle:5}
+      idle-timeout: ${idleTimeout:30000}
+      max-lifetime: ${maxLifetime:600000}
+      connection-timeout: ${connectionTimeout:30000}
 
 mybatis:
   mapper-locations: classpath:mybatis/*.xml
-  type-aliases-package: com.zes.bridge.model
-  configuration:
-    map-underscore-to-camel-case: true
+  type-aliases-package: com.zes.authentication.model
 
 server:
   port: 8080
