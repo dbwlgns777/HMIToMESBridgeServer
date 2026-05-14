@@ -133,16 +133,24 @@ public class ZES_workOrderKioskService
 
     public JSONObject ZES_resolveMonitoringTypeCodesByIctNumber(String ictNumber)
     {
-        List<String> ZES_lv_facilityCodes = ZES_gv_workOrderMapper.ZES_selectFacilityCodesByIctNumber(ictNumber);
-        if (ZES_lv_facilityCodes.size() > 1) return ZES_gv_returnService.ZES_returnToFormat(ZES_Enum.ZES_VALID_ERROR, "duplication", ZES_lv_facilityCodes);
-        if (ZES_lv_facilityCodes.isEmpty()) return ZES_gv_returnService.ZES_returnToFormat(ZES_Enum.ZES_NOT_FOUND, "facility not found", null);
+        try
+        {
+            List<String> ZES_lv_facilityCodes = ZES_gv_workOrderMapper.ZES_selectFacilityCodesByIctNumber(ictNumber);
+            if (ZES_lv_facilityCodes.size() > 1) return ZES_gv_returnService.ZES_returnToFormat(ZES_Enum.ZES_VALID_ERROR, "duplication", ZES_lv_facilityCodes);
+            if (ZES_lv_facilityCodes.isEmpty()) return ZES_gv_returnService.ZES_returnToFormat(ZES_Enum.ZES_NOT_FOUND, "facility not found", null);
 
-        String ZES_lv_facilityCode = ZES_lv_facilityCodes.get(0);
-        List<String> ZES_lv_monitoringTypeCodes = ZES_gv_workOrderMapper.ZES_selectMonitoringTypeCodes(ZES_lv_facilityCode);
-        JSONObject ZES_lv_data = new JSONObject();
-        ZES_lv_data.put("facilityCode", ZES_lv_facilityCode);
-        ZES_lv_data.put("monitoringTypeCodes", ZES_lv_monitoringTypeCodes);
-        return ZES_gv_returnService.ZES_returnToFormat(ZES_Enum.ZES_SUCCESS, "success", ZES_lv_data);
+            String ZES_lv_facilityCode = ZES_lv_facilityCodes.get(0);
+            List<String> ZES_lv_monitoringTypeCodes = ZES_gv_workOrderMapper.ZES_selectMonitoringTypeCodes(ZES_lv_facilityCode);
+            JSONObject ZES_lv_data = new JSONObject();
+            ZES_lv_data.put("facilityCode", ZES_lv_facilityCode);
+            ZES_lv_data.put("monitoringTypeCodes", ZES_lv_monitoringTypeCodes);
+            return ZES_gv_returnService.ZES_returnToFormat(ZES_Enum.ZES_SUCCESS, "success", ZES_lv_data);
+        }
+        catch (Exception e)
+        {
+            return ZES_gv_returnService.ZES_returnToFormat(ZES_Enum.ZES_SERVER_ERROR,
+                    "DB connection timeout or unavailable: " + e.getClass().getSimpleName(), null);
+        }
     }
 
     public List<String> ZES_workingHistoryOrderFilter(String code, String date)
