@@ -1,0 +1,28 @@
+spring:
+  config:
+    import: optional:file:./db_config/mysql.config
+  datasource:
+    url: ${jdbcUrl}
+    username: ${username}
+    password: ${password}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: ${maximumPoolSize:10}
+      minimum-idle: ${minimumIdle:5}
+      idle-timeout: ${idleTimeout:30000}
+      max-lifetime: ${maxLifetime:600000}
+      connection-timeout: ${connectionTimeout:30000}
+
+mybatis:
+  type-aliases-package: com.zes.hmitomesbridgeserver.model
+
+server:
+  port: 8080
+
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: alpha
