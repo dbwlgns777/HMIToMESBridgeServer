@@ -66,6 +66,8 @@ public class ZES_workOrderKioskService
     {
         JSONObject ZES_lv_json = new JSONObject();
         ZES_lv_json.put("workOrderCode", workOrderCode);
+        ZES_lv_json.put("productCode", "");
+        ZES_lv_json.put("productName", "");
 
         Map<String, Object> ZES_lv_workOrder = ZES_gv_workOrderMapper.ZES_selectWorkOrderByCode(workOrderCode);
         if (ZES_lv_workOrder == null)
@@ -75,6 +77,7 @@ public class ZES_workOrderKioskService
 
         String ZES_lv_facilityCode = String.valueOf(ZES_lv_workOrder.getOrDefault("facility_code", ""));
         String ZES_lv_productCode = String.valueOf(ZES_lv_workOrder.getOrDefault("product_code", ""));
+        ZES_lv_json.put("productCode", ZES_lv_productCode);
 
         ZES_lv_json.put("uniqueWorkOrderNumber", ZES_lv_workOrder.getOrDefault("unique_work_order_number", ""));
         ZES_lv_json.put("instructionDate", ZES_lv_workOrder.getOrDefault("instruction_date", ""));
