@@ -147,7 +147,7 @@ public class ZES_opcUaServerRunner implements ApplicationRunner
             int offset=(req-1)*5;
             for(int i=0;i<5;i++){
                 int idx=offset+i;
-                ZES_opcUaWorkItem w= idx<items.size()?items.get(idx):new ZES_opcUaWorkItem("","","","",(short)0);
+                ZES_opcUaWorkItem w= idx<items.size()?items.get(idx):new ZES_opcUaWorkItem("","","","","",(short)0);
                 serial[i].setValue(new DataValue(new Variant(w.serial_code())));
                 pname[i].setValue(new DataValue(new Variant(w.product_name())));
                 target[i].setValue(new DataValue(new Variant(w.target_goal())));
