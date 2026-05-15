@@ -131,7 +131,9 @@ public class ZES_opcUaServerRunner implements ApplicationRunner
 
         ScheduledExecutorService sch= Executors.newSingleThreadScheduledExecutor();
         final short[] cur={1};
+        final String[] lastSnapshot = {""};
         sch.scheduleAtFixedRate(()->{
+            System.out.println("[OPC-UA] polling cycle running...");
             String ictNo=String.valueOf(ict.getValue().getValue().getValue());
             List<ZES_opcUaWorkItem> items=ZES_gv_workItemProvider.ZES_getWorkItemsByIctNumber(ictNo);
             short pages=(short)Math.max(1, (items.size()+4)/5);
@@ -162,6 +164,17 @@ public class ZES_opcUaServerRunner implements ApplicationRunner
             serialCodeDetail.setValue(new DataValue(new Variant(ZES_lv_detail.serial_code())));
             processDetail.setValue(new DataValue(new Variant(ZES_lv_detail.process())));
             targetGoalDetail.setValue(new DataValue(new Variant(ZES_lv_detail.target_goal())));
+
+            String ZES_lv_snapshot = "page=" + req + ", selectedRow=" + ZES_lv_selected +
+                    ", row1.serial_code=" + String.valueOf(serial[0].getValue().getValue().getValue()) +
+                    ", detail.serialCode=" + String.valueOf(serialCodeDetail.getValue().getValue().getValue()) +
+                    ", detail.process=" + String.valueOf(processDetail.getValue().getValue().getValue()) +
+                    ", detail.targetGoal=" + String.valueOf(targetGoalDetail.getValue().getValue().getValue());
+            if (!ZES_lv_snapshot.equals(lastSnapshot[0]))
+            {
+                lastSnapshot[0] = ZES_lv_snapshot;
+                System.out.println("[OPC-UA][TAG-CHANGE] " + ZES_lv_snapshot);
+            }
         },0,500, TimeUnit.MILLISECONDS);
         Runtime.getRuntime().addShutdownHook(new Thread(sch::shutdownNow));
     }
