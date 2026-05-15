@@ -88,8 +88,9 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
 
         ScheduledExecutorService sch= Executors.newSingleThreadScheduledExecutor(); final short[] cur={1}; final String[] lastIct={""}; final boolean[] lastEnter={false};
         sch.scheduleAtFixedRate(()->{
-            String ictNo=ZES_sanitizeIctNumber(ZES_readIctNumberSafe(ict));
-            System.out.println("[OPC-UA][ICT-TAG] rawType=" + (ict.getValue().getValue().getValue()==null?"null":ict.getValue().getValue().getValue().getClass().getName()) + ", value=" + ictNo);
+            String ictRaw=ZES_readIctNumberSafe(ict);
+            String ictNo=ZES_sanitizeIctNumber(ictRaw);
+            System.out.println("[OPC-UA][ICT-TAG] rawType=" + (ict.getValue().getValue().getValue()==null?"null":ict.getValue().getValue().getValue().getClass().getName()) + ", raw=" + ictRaw + ", sanitized=" + ictNo);
             boolean enterNow=Boolean.TRUE.equals(enter.getValue().getValue().getValue());
             boolean enterEdge=!lastEnter[0] && enterNow;
             lastEnter[0]=enterNow;
@@ -137,7 +138,7 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
         if (raw == null) return "";
         String v = raw.replace("\u0000", "").trim();
         if (v.isEmpty()) return "";
-        if (!v.matches("[A-Za-z0-9_-]+")) {
+        if (!v.matches("^P\\d{7}$")) {
             System.out.println("[OPC-UA][ICT-TAG] invalid ict_number format from HMI: '" + v + "'");
             return "";
         }
