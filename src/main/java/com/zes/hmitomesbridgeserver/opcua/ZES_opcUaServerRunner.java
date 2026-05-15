@@ -132,6 +132,18 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
         return String.valueOf(raw).trim();
     }
 
+    private String ZES_sanitizeIctNumber(String raw)
+    {
+        if (raw == null) return "";
+        String v = raw.replace("\u0000", "").trim();
+        if (v.isEmpty()) return "";
+        if (!v.matches("[A-Za-z0-9_-]+")) {
+            System.out.println("[OPC-UA][ICT-TAG] invalid ict_number format from HMI: '" + v + "'");
+            return "";
+        }
+        return v;
+    }
+
     private void add(NodeManager<UaNode> nm, OpcUaServer s, UaFolderNode root, UaVariableNode n){nm.addNode(n);nm.addReferences(new Reference(root.getNodeId(),Identifiers.Organizes,n.getNodeId().expanded(),true),s.getNamespaceTable());}
     private UaVariableNode roString(UaNodeContext c,UShort n,String id,String b,String v){UaVariableNode x= UaVariableNode.builder(c).setNodeId(new NodeId(n,id)).setBrowseName(new QualifiedName(n,b)).setDisplayName(LocalizedText.english(b)).setDataType(Identifiers.String).setTypeDefinition(Identifiers.BaseDataVariableType).build();x.setAccessLevel(AccessLevel.toValue(AccessLevel.READ_ONLY));x.setUserAccessLevel(AccessLevel.toValue(AccessLevel.READ_ONLY));x.setValue(new DataValue(new Variant(v)));return x;}
     private UaVariableNode rwString(UaNodeContext c,UShort n,String id,String b,String v){UaVariableNode x=roString(c,n,id,b,v);x.setAccessLevel(AccessLevel.toValue(AccessLevel.READ_WRITE));x.setUserAccessLevel(AccessLevel.toValue(AccessLevel.READ_WRITE));return x;}
