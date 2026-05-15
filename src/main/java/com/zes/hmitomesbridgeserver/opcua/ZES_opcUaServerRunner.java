@@ -88,7 +88,8 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
 
         ScheduledExecutorService sch= Executors.newSingleThreadScheduledExecutor(); final short[] cur={1}; final String[] lastIct={"P0208258"}; final boolean[] lastEnter={false};
         sch.scheduleAtFixedRate(()->{
-            String ictNo=String.valueOf(ict.getValue().getValue().getValue());
+            String ictNo=ZES_readIctNumberSafe(ict);
+            System.out.println("[OPC-UA][ICT-TAG] rawType=" + (ict.getValue().getValue().getValue()==null?"null":ict.getValue().getValue().getValue().getClass().getName()) + ", value=" + ictNo);
             boolean enterNow=Boolean.TRUE.equals(enter.getValue().getValue().getValue());
             boolean enterEdge=!lastEnter[0] && enterNow;
             lastEnter[0]=enterNow;
@@ -114,6 +115,17 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
             System.out.println("[OPC-UA] polling cycle running... ict="+ictNo+", page="+req+"/"+pages+", selectedRow="+sel);
         },0,500, TimeUnit.MILLISECONDS);
         Runtime.getRuntime().addShutdownHook(new Thread(sch::shutdownNow));
+    }
+
+
+    private String ZES_readIctNumberSafe(UaVariableNode ictNode)
+    {
+        Object raw = ictNode.getValue().getValue().getValue();
+        if (raw == null) return "";
+        if (raw instanceof String str) return str.trim();
+        if (raw instanceof byte[] b) return new String(b).trim();
+        if (raw instanceof ByteString bs && bs.bytes() != null) return new String(bs.bytes()).trim();
+        return String.valueOf(raw).trim();
     }
 
     private void add(NodeManager<UaNode> nm, OpcUaServer s, UaFolderNode root, UaVariableNode n){nm.addNode(n);nm.addReferences(new Reference(root.getNodeId(),Identifiers.Organizes,n.getNodeId().expanded(),true),s.getNamespaceTable());}
