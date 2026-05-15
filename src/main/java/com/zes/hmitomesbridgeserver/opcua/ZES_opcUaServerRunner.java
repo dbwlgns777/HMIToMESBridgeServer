@@ -68,7 +68,7 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
         UaFolderNode root=new UaFolderNode(ctx,new NodeId(ns,"LS_EXP2"),new QualifiedName(ns,"LS_EXP2"),LocalizedText.english("LS_EXP2"));
         nm.addNode(root); nm.addReferences(new Reference(Identifiers.ObjectsFolder,Identifiers.Organizes,root.getNodeId().expanded(),true),server.getNamespaceTable());
 
-        UaVariableNode ict=rwString(ctx,ns,"LS_EXP2/selectedIctNumber","selectedIctNumber","P0208258");
+        UaVariableNode ict=rwString(ctx,ns,"LS_EXP2/selectedIctNumber","selectedIctNumber","");
         UaVariableNode enter=rwBool(ctx,ns,"LS_EXP2/workOrderPageEnter","workOrderPageEnter",false);
         UaVariableNode page=rwInt16(ctx,ns,"LS_EXP2/workReportCurrentPage","workReportCurrentPage",(short)1);
         UaVariableNode plus=rwBool(ctx,ns,"LS_EXP2/workReportPagePlus","workReportPagePlus",false);
@@ -86,13 +86,17 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
             target[i]=roInt16(ctx,ns,"LS_EXP2/row"+r+"/target_goal","target_goal_row"+r,(short)0); process[i]=roString(ctx,ns,"LS_EXP2/row"+r+"/process","process_row"+r,""); deadline[i]=roString(ctx,ns,"LS_EXP2/row"+r+"/deadline","deadline_row"+r,"");
             add(nm,server,root,serial[i]);add(nm,server,root,pname[i]);add(nm,server,root,target[i]);add(nm,server,root,process[i]);add(nm,server,root,deadline[i]);}
 
-        ScheduledExecutorService sch= Executors.newSingleThreadScheduledExecutor(); final short[] cur={1}; final String[] lastIct={"P0208258"}; final boolean[] lastEnter={false};
+        ScheduledExecutorService sch= Executors.newSingleThreadScheduledExecutor(); final short[] cur={1}; final String[] lastIct={""}; final boolean[] lastEnter={false};
         sch.scheduleAtFixedRate(()->{
-            String ictNo=ZES_readIctNumberSafe(ict);
+            String ictNo=ZES_sanitizeIctNumber(ZES_readIctNumberSafe(ict));
             System.out.println("[OPC-UA][ICT-TAG] rawType=" + (ict.getValue().getValue().getValue()==null?"null":ict.getValue().getValue().getValue().getClass().getName()) + ", value=" + ictNo);
             boolean enterNow=Boolean.TRUE.equals(enter.getValue().getValue().getValue());
             boolean enterEdge=!lastEnter[0] && enterNow;
             lastEnter[0]=enterNow;
+            if (ictNo.isEmpty()) {
+                System.out.println("[OPC-UA][ICT-TAG] waiting for HMI ict_number input...");
+                return;
+            }
             boolean ictChanged=!ictNo.equals(lastIct[0]);
             if(ictChanged){ lastIct[0]=ictNo; cur[0]=1; page.setValue(new DataValue(new Variant((short)1))); }
             if(enterEdge){ cur[0]=1; page.setValue(new DataValue(new Variant((short)1))); enter.setValue(new DataValue(new Variant(false))); }
