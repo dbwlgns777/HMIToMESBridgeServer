@@ -97,9 +97,14 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
             boolean enterNow=Boolean.TRUE.equals(enter.getValue().getValue().getValue());
             boolean enterEdge=!lastEnter[0] && enterNow;
             lastEnter[0]=enterNow;
-            String queryIct = lastValidIct[0];
-            if (queryIct.isEmpty()) {
+            String queryIctRaw = lastValidIct[0];
+            if (queryIctRaw.isEmpty()) {
                 System.out.println("[OPC-UA][ICT-TAG] waiting for valid HMI ict_number input...");
+                return;
+            }
+            String queryIct = ZES_normalizeIctNumberForDb(queryIctRaw);
+            if (queryIct.isEmpty()) {
+                System.out.println("[OPC-UA][ICT-TAG] waiting for normalized ict_number for DB select... raw="+queryIctRaw);
                 return;
             }
             boolean ictChanged=!queryIct.equals(lastIct[0]);
@@ -158,6 +163,16 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
             System.out.println("[OPC-UA][ICT-TAG] invalid ict_number format from HMI: '" + v + "'");
             return "";
         }
+        return v;
+    }
+
+    private String ZES_normalizeIctNumberForDb(String ictRaw)
+    {
+        if (ictRaw == null) return "";
+        String v = ictRaw.trim();
+        if (v.isEmpty()) return "";
+        if (v.matches("^\\d{6}$")) return "P0" + v;
+        if (v.matches("^\\d{7}$")) return "P" + v;
         return v;
     }
 
