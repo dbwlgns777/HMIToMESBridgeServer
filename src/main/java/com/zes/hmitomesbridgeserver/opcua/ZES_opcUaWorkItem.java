@@ -1,10 +1,11 @@
 package com.zes.hmitomesbridgeserver.opcua;
 
 public record ZES_opcUaWorkItem(
-        String productCode,
-        String productName,
-        String processName,
+        String product_code,
+        String product_name,
+        String serial_code,
+        String process,
         String deadline,
-        short targetProduction
+        short target_goal
 ) {
 }

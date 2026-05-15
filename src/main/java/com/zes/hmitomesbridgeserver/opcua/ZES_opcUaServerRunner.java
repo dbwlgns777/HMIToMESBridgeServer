@@ -30,6 +30,9 @@ import org.springframework.stereotype.Component;
 import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 @Component
 public class ZES_opcUaServerRunner implements ApplicationRunner
@@ -56,7 +59,6 @@ public class ZES_opcUaServerRunner implements ApplicationRunner
         ZES_lv_server.startup().get();
         addDbBackedNodes(ZES_lv_server);
 
-        System.out.println("OPC UA Test Server started.");
         System.out.println("Discovery Endpoint: opc.tcp://" + BIND_IP + ":" + ENDPOINT_PORT + ROOT_ENDPOINT_PATH);
         System.out.println("Service Endpoint: opc.tcp://" + BIND_IP + ":" + ENDPOINT_PORT + ENDPOINT_PATH);
     }
@@ -65,12 +67,10 @@ public class ZES_opcUaServerRunner implements ApplicationRunner
     {
         EndpointConfiguration serviceEndpoint = buildEndpoint(ENDPOINT_PATH);
         EndpointConfiguration discoveryEndpoint = buildEndpoint(ROOT_ENDPOINT_PATH);
-
         var configBuilder = OpcUaServerConfig.builder()
                 .setEndpoints(Set.of(discoveryEndpoint, serviceEndpoint))
                 .setIdentityValidator(new AnonymousIdentityValidator())
                 .setBuildInfo(new BuildInfo(APP_URI, "openai", "LS eXP2 OPC UA Test Server", OpcUaServer.SDK_VERSION, "2.4.0", DateTime.now()));
-
         invokeIfPresent(configBuilder, "setBindPort", ENDPOINT_PORT);
         return new OpcUaServer(configBuilder.build());
     }
@@ -84,131 +84,84 @@ public class ZES_opcUaServerRunner implements ApplicationRunner
                 .setTransportProfile(TransportProfile.TCP_UASC_UABINARY)
                 .setSecurityPolicy(SecurityPolicy.None)
                 .setSecurityMode(MessageSecurityMode.None);
-
         invokeIfPresent(endpointBuilder, "setBindPort", ENDPOINT_PORT);
         return endpointBuilder.build();
     }
 
     private void invokeIfPresent(Object target, String methodName, int value)
     {
-        try
-        {
-            Method m = target.getClass().getMethod(methodName, int.class);
-            m.invoke(target, value);
-        }
-        catch (Exception ignored)
-        {
-        }
+        try { Method m = target.getClass().getMethod(methodName, int.class); m.invoke(target, value);} catch (Exception ignored) {}
     }
 
     private void addDbBackedNodes(OpcUaServer server)
     {
         UaNode objectsFolder = server.getAddressSpaceManager().getManagedNode(Identifiers.ObjectsFolder).orElseThrow();
         UShort nsIndex = objectsFolder.getNodeId().getNamespaceIndex();
-        UaNodeContext nodeContext = objectsFolder.getNodeContext();
-        @SuppressWarnings("unchecked")
-        NodeManager<UaNode> nodeManager = (NodeManager<UaNode>) objectsFolder.getNodeManager();
+        UaNodeContext ctx = objectsFolder.getNodeContext();
+        @SuppressWarnings("unchecked") NodeManager<UaNode> nm = (NodeManager<UaNode>) objectsFolder.getNodeManager();
 
-        UaFolderNode rootFolder = new UaFolderNode(nodeContext, new NodeId(nsIndex, "LS_EXP2"), new QualifiedName(nsIndex, "LS_EXP2"), LocalizedText.english("LS_EXP2"));
-        nodeManager.addNode(rootFolder);
-        nodeManager.addReferences(new Reference(Identifiers.ObjectsFolder, Identifiers.Organizes, rootFolder.getNodeId().expanded(), true), server.getNamespaceTable());
+        UaFolderNode root = new UaFolderNode(ctx, new NodeId(nsIndex, "LS_EXP2"), new QualifiedName(nsIndex, "LS_EXP2"), LocalizedText.english("LS_EXP2"));
+        nm.addNode(root);
+        nm.addReferences(new Reference(Identifiers.ObjectsFolder, Identifiers.Organizes, root.getNodeId().expanded(), true), server.getNamespaceTable());
 
-        // equipmentNo를 ictNumber로 사용
-        UaVariableNode ictNumberNode = createStringRwNode(nodeContext, nsIndex, "LS_EXP2/selectedIctNumber", "selectedIctNumber");
-        ictNumberNode.setValue(new DataValue(new Variant("P0208258")));
-        nodeManager.addNode(ictNumberNode);
-        nodeManager.addReferences(new Reference(rootFolder.getNodeId(), Identifiers.Organizes, ictNumberNode.getNodeId().expanded(), true), server.getNamespaceTable());
+        UaVariableNode ict = rwString(ctx, nsIndex, "LS_EXP2/selectedIctNumber", "selectedIctNumber", "P0208258");
+        UaVariableNode page = rwInt16(ctx, nsIndex, "LS_EXP2/page", "page", (short) 1);
+        UaVariableNode totalPage = roInt16(ctx, nsIndex, "LS_EXP2/total_page", "total_page", (short) 1);
+        UaVariableNode up = rwBool(ctx, nsIndex, "LS_EXP2/up", "up", false);
+        UaVariableNode down = rwBool(ctx, nsIndex, "LS_EXP2/down", "down", false);
+        add(nm, server, root, ict); add(nm, server, root, page); add(nm, server, root, totalPage); add(nm, server, root, up); add(nm, server, root, down);
 
-        List<ZES_opcUaWorkItem> ZES_lv_items = ZES_gv_workItemProvider.ZES_getWorkItemsByIctNumber("P0208258");
-        ZES_opcUaWorkItem ZES_lv_item = ZES_lv_items.isEmpty() ? new ZES_opcUaWorkItem("", "", "", "", (short) 0) : ZES_lv_items.get(0);
+        UaVariableNode[] serial = new UaVariableNode[5];
+        UaVariableNode[] pname = new UaVariableNode[5];
+        UaVariableNode[] target = new UaVariableNode[5];
+        UaVariableNode[] process = new UaVariableNode[5];
+        UaVariableNode[] deadline = new UaVariableNode[5];
+        for (int i=0;i<5;i++)
+        {
+            int r=i+1;
+            serial[i]=roString(ctx, nsIndex, "LS_EXP2/row"+r+"/serial_code", "serial_code_row"+r, "");
+            pname[i]=roString(ctx, nsIndex, "LS_EXP2/row"+r+"/product_name", "product_name_row"+r, "");
+            target[i]=roInt16(ctx, nsIndex, "LS_EXP2/row"+r+"/target_goal", "target_goal_row"+r, (short)0);
+            process[i]=roString(ctx, nsIndex, "LS_EXP2/row"+r+"/process", "process_row"+r, "");
+            deadline[i]=roString(ctx, nsIndex, "LS_EXP2/row"+r+"/deadline", "deadline_row"+r, "");
+            add(nm, server, root, serial[i]); add(nm, server, root, pname[i]); add(nm, server, root, target[i]); add(nm, server, root, process[i]); add(nm, server, root, deadline[i]);
+        }
 
-        addStringNode(nodeContext, nodeManager, server, rootFolder, nsIndex, "LS_EXP2/workReport/detail/productcodeDetail", "productcodeDetail", ZES_lv_item.productCode());
-        addStringNode(nodeContext, nodeManager, server, rootFolder, nsIndex, "LS_EXP2/workReport/detail/productnameDetail", "productnameDetail", ZES_lv_item.productName());
-        addStringNode(nodeContext, nodeManager, server, rootFolder, nsIndex, "LS_EXP2/workReport/detail/processDetail", "processDetail", ZES_lv_item.processName());
-        addStringNode(nodeContext, nodeManager, server, rootFolder, nsIndex, "LS_EXP2/workReport/detail/workdeadlineDetail", "workdeadlineDetail", ZES_lv_item.deadline());
+        ScheduledExecutorService sch= Executors.newSingleThreadScheduledExecutor();
+        final short[] cur={1};
+        sch.scheduleAtFixedRate(()->{
+            String ictNo=String.valueOf(ict.getValue().getValue().getValue());
+            List<ZES_opcUaWorkItem> items=ZES_gv_workItemProvider.ZES_getWorkItemsByIctNumber(ictNo);
+            short pages=(short)Math.max(1, (items.size()+4)/5);
+            totalPage.setValue(new DataValue(new Variant(pages)));
 
-        addInt16RwNode(nodeContext, nodeManager, server, rootFolder, nsIndex, "LS_EXP2/workReportCurrentPage", "workReportCurrentPage", (short) 1);
-        addInt16Node(nodeContext, nodeManager, server, rootFolder, nsIndex, "LS_EXP2/workReportTotalPage", "workReportTotalPage", (short) 1);
-        addInt16RwNode(nodeContext, nodeManager, server, rootFolder, nsIndex, "LS_EXP2/workReportSelectedRow", "workReportSelectedRow", (short) 1);
+            boolean u=Boolean.TRUE.equals(up.getValue().getValue().getValue());
+            boolean d=Boolean.TRUE.equals(down.getValue().getValue().getValue());
+            short req=((Number)page.getValue().getValue().getValue()).shortValue();
+            if(u){req=(short)Math.max(1,cur[0]-1); up.setValue(new DataValue(new Variant(false)));}
+            if(d){req=(short)Math.min(pages,cur[0]+1); down.setValue(new DataValue(new Variant(false)));}
+            req=(short)Math.max(1,Math.min(pages,req));
+            cur[0]=req;
+            page.setValue(new DataValue(new Variant(req)));
 
-        addStringNode(nodeContext, nodeManager, server, rootFolder, nsIndex, "LS_EXP2/workReport/row1/productcode", "productcode_row1", ZES_lv_item.productCode());
-        addStringNode(nodeContext, nodeManager, server, rootFolder, nsIndex, "LS_EXP2/workReport/row1/productname", "productname_row1", ZES_lv_item.productName());
-        addStringNode(nodeContext, nodeManager, server, rootFolder, nsIndex, "LS_EXP2/workReport/row1/process", "process_row1", ZES_lv_item.processName());
-        addStringNode(nodeContext, nodeManager, server, rootFolder, nsIndex, "LS_EXP2/workReport/row1/workdeadline", "workdeadline_row1", ZES_lv_item.deadline());
-
-        UaVariableNode targetNode = UaVariableNode.builder(nodeContext)
-                .setNodeId(new NodeId(nsIndex, "LS_EXP2/workReport/detail/targetQuantityDetail"))
-                .setBrowseName(new QualifiedName(nsIndex, "targetQuantityDetail"))
-                .setDisplayName(LocalizedText.english("targetQuantityDetail"))
-                .setDataType(Identifiers.Int16)
-                .setTypeDefinition(Identifiers.BaseDataVariableType)
-                .build();
-        targetNode.setValue(new DataValue(new Variant(ZES_lv_item.targetProduction())));
-        nodeManager.addNode(targetNode);
-        nodeManager.addReferences(new Reference(rootFolder.getNodeId(), Identifiers.Organizes, targetNode.getNodeId().expanded(), true), server.getNamespaceTable());
+            int offset=(req-1)*5;
+            for(int i=0;i<5;i++){
+                int idx=offset+i;
+                ZES_opcUaWorkItem w= idx<items.size()?items.get(idx):new ZES_opcUaWorkItem("","","","",(short)0);
+                serial[i].setValue(new DataValue(new Variant(w.serial_code())));
+                pname[i].setValue(new DataValue(new Variant(w.product_name())));
+                target[i].setValue(new DataValue(new Variant(w.target_goal())));
+                process[i].setValue(new DataValue(new Variant(w.process())));
+                deadline[i].setValue(new DataValue(new Variant(w.deadline())));
+            }
+        },0,500, TimeUnit.MILLISECONDS);
+        Runtime.getRuntime().addShutdownHook(new Thread(sch::shutdownNow));
     }
 
-    private UaVariableNode createStringRwNode(UaNodeContext nodeContext, UShort nsIndex, String id, String browseName)
-    {
-        UaVariableNode node = UaVariableNode.builder(nodeContext)
-                .setNodeId(new NodeId(nsIndex, id))
-                .setBrowseName(new QualifiedName(nsIndex, browseName))
-                .setDisplayName(LocalizedText.english(browseName))
-                .setDataType(Identifiers.String)
-                .setTypeDefinition(Identifiers.BaseDataVariableType)
-                .build();
-        node.setAccessLevel(AccessLevel.toValue(AccessLevel.READ_WRITE));
-        node.setUserAccessLevel(AccessLevel.toValue(AccessLevel.READ_WRITE));
-        return node;
-    }
-
-
-    private void addInt16Node(UaNodeContext nodeContext, NodeManager<UaNode> nodeManager, OpcUaServer server, UaFolderNode rootFolder,
-                              UShort nsIndex, String nodeId, String browseName, short value)
-    {
-        UaVariableNode node = UaVariableNode.builder(nodeContext)
-                .setNodeId(new NodeId(nsIndex, nodeId))
-                .setBrowseName(new QualifiedName(nsIndex, browseName))
-                .setDisplayName(LocalizedText.english(browseName))
-                .setDataType(Identifiers.Int16)
-                .setTypeDefinition(Identifiers.BaseDataVariableType)
-                .build();
-        node.setAccessLevel(AccessLevel.toValue(AccessLevel.READ_ONLY));
-        node.setUserAccessLevel(AccessLevel.toValue(AccessLevel.READ_ONLY));
-        node.setValue(new DataValue(new Variant(value)));
-        nodeManager.addNode(node);
-        nodeManager.addReferences(new Reference(rootFolder.getNodeId(), Identifiers.Organizes, node.getNodeId().expanded(), true), server.getNamespaceTable());
-    }
-
-    private void addInt16RwNode(UaNodeContext nodeContext, NodeManager<UaNode> nodeManager, OpcUaServer server, UaFolderNode rootFolder,
-                                UShort nsIndex, String nodeId, String browseName, short value)
-    {
-        UaVariableNode node = UaVariableNode.builder(nodeContext)
-                .setNodeId(new NodeId(nsIndex, nodeId))
-                .setBrowseName(new QualifiedName(nsIndex, browseName))
-                .setDisplayName(LocalizedText.english(browseName))
-                .setDataType(Identifiers.Int16)
-                .setTypeDefinition(Identifiers.BaseDataVariableType)
-                .build();
-        node.setAccessLevel(AccessLevel.toValue(AccessLevel.READ_WRITE));
-        node.setUserAccessLevel(AccessLevel.toValue(AccessLevel.READ_WRITE));
-        node.setValue(new DataValue(new Variant(value)));
-        nodeManager.addNode(node);
-        nodeManager.addReferences(new Reference(rootFolder.getNodeId(), Identifiers.Organizes, node.getNodeId().expanded(), true), server.getNamespaceTable());
-    }
-
-    private void addStringNode(UaNodeContext nodeContext, NodeManager<UaNode> nodeManager, OpcUaServer server, UaFolderNode rootFolder,
-                               UShort nsIndex, String nodeId, String browseName, String value)
-    {
-        UaVariableNode node = UaVariableNode.builder(nodeContext)
-                .setNodeId(new NodeId(nsIndex, nodeId))
-                .setBrowseName(new QualifiedName(nsIndex, browseName))
-                .setDisplayName(LocalizedText.english(browseName))
-                .setDataType(Identifiers.String)
-                .setTypeDefinition(Identifiers.BaseDataVariableType)
-                .build();
-        node.setValue(new DataValue(new Variant(value)));
-        nodeManager.addNode(node);
-        nodeManager.addReferences(new Reference(rootFolder.getNodeId(), Identifiers.Organizes, node.getNodeId().expanded(), true), server.getNamespaceTable());
-    }
+    private void add(NodeManager<UaNode> nm, OpcUaServer s, UaFolderNode root, UaVariableNode n){ nm.addNode(n); nm.addReferences(new Reference(root.getNodeId(), Identifiers.Organizes, n.getNodeId().expanded(), true), s.getNamespaceTable()); }
+    private UaVariableNode roString(UaNodeContext c,UShort n,String id,String b,String v){ UaVariableNode x= UaVariableNode.builder(c).setNodeId(new NodeId(n,id)).setBrowseName(new QualifiedName(n,b)).setDisplayName(LocalizedText.english(b)).setDataType(Identifiers.String).setTypeDefinition(Identifiers.BaseDataVariableType).build(); x.setAccessLevel(AccessLevel.toValue(AccessLevel.READ_ONLY)); x.setUserAccessLevel(AccessLevel.toValue(AccessLevel.READ_ONLY)); x.setValue(new DataValue(new Variant(v))); return x; }
+    private UaVariableNode rwString(UaNodeContext c,UShort n,String id,String b,String v){ UaVariableNode x= roString(c,n,id,b,v); x.setAccessLevel(AccessLevel.toValue(AccessLevel.READ_WRITE)); x.setUserAccessLevel(AccessLevel.toValue(AccessLevel.READ_WRITE)); return x; }
+    private UaVariableNode roInt16(UaNodeContext c,UShort n,String id,String b,short v){ UaVariableNode x= UaVariableNode.builder(c).setNodeId(new NodeId(n,id)).setBrowseName(new QualifiedName(n,b)).setDisplayName(LocalizedText.english(b)).setDataType(Identifiers.Int16).setTypeDefinition(Identifiers.BaseDataVariableType).build(); x.setAccessLevel(AccessLevel.toValue(AccessLevel.READ_ONLY)); x.setUserAccessLevel(AccessLevel.toValue(AccessLevel.READ_ONLY)); x.setValue(new DataValue(new Variant(v))); return x; }
+    private UaVariableNode rwInt16(UaNodeContext c,UShort n,String id,String b,short v){ UaVariableNode x= roInt16(c,n,id,b,v); x.setAccessLevel(AccessLevel.toValue(AccessLevel.READ_WRITE)); x.setUserAccessLevel(AccessLevel.toValue(AccessLevel.READ_WRITE)); return x; }
+    private UaVariableNode rwBool(UaNodeContext c,UShort n,String id,String b,boolean v){ UaVariableNode x= UaVariableNode.builder(c).setNodeId(new NodeId(n,id)).setBrowseName(new QualifiedName(n,b)).setDisplayName(LocalizedText.english(b)).setDataType(Identifiers.Boolean).setTypeDefinition(Identifiers.BaseDataVariableType).build(); x.setAccessLevel(AccessLevel.toValue(AccessLevel.READ_WRITE)); x.setUserAccessLevel(AccessLevel.toValue(AccessLevel.READ_WRITE)); x.setValue(new DataValue(new Variant(v))); return x; }
 }
