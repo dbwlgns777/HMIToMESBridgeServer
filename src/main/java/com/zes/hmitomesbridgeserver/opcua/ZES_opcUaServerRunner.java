@@ -121,6 +121,18 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
             int di=offset+(sel-1); ZES_opcUaWorkItem d=di<items.size()?items.get(di):new ZES_opcUaWorkItem("","","","","",(short)0);
             serialCodeDetail.setValue(new DataValue(new Variant(d.serial_code()))); processDetail.setValue(new DataValue(new Variant(d.process()))); targetGoalDetail.setValue(new DataValue(new Variant(d.target_goal())));
 
+            System.out.println("[OPC-UA][DB-RESULT] itemCount="+items.size()+", queryIct="+queryIct+", page="+req+", selectedRow="+sel);
+            for(int i=0;i<5;i++){
+                Object serialTagVal=serial[i].getValue().getValue().getValue();
+                Object pnameTagVal=pname[i].getValue().getValue().getValue();
+                Object targetTagVal=target[i].getValue().getValue().getValue();
+                Object processTagVal=process[i].getValue().getValue().getValue();
+                Object deadlineTagVal=deadline[i].getValue().getValue().getValue();
+                int row=i+1;
+                System.out.println("[OPC-UA][WORKITEM-TAG] row"+row+"_serialCode="+serialTagVal+", row"+row+"_productName="+pnameTagVal+", row"+row+"_targetGoal="+targetTagVal+", row"+row+"_process="+processTagVal+", row"+row+"_deadline="+deadlineTagVal);
+            }
+            System.out.println("[OPC-UA][WORKITEM-DETAIL-TAG] serialCodeDetail="+serialCodeDetail.getValue().getValue().getValue()+", processDetail="+processDetail.getValue().getValue().getValue()+", targetGoalDetail="+targetGoalDetail.getValue().getValue().getValue());
+
             System.out.println("[OPC-UA] polling cycle running... ict="+queryIct+", page="+req+"/"+pages+", selectedRow="+sel);
         },0,500, TimeUnit.MILLISECONDS);
         Runtime.getRuntime().addShutdownHook(new Thread(sch::shutdownNow));
