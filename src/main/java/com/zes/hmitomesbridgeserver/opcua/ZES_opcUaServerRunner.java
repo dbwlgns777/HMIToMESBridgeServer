@@ -105,10 +105,10 @@ public class ZES_opcUaServerRunner implements ApplicationRunner
         nm.addReferences(new Reference(Identifiers.ObjectsFolder, Identifiers.Organizes, root.getNodeId().expanded(), true), server.getNamespaceTable());
 
         UaVariableNode ict = rwString(ctx, nsIndex, "LS_EXP2/selectedIctNumber", "selectedIctNumber", "P0208258");
-        UaVariableNode page = rwInt16(ctx, nsIndex, "LS_EXP2/page", "page", (short) 1);
-        UaVariableNode totalPage = roInt16(ctx, nsIndex, "LS_EXP2/total_page", "total_page", (short) 1);
-        UaVariableNode up = rwBool(ctx, nsIndex, "LS_EXP2/up", "up", false);
-        UaVariableNode down = rwBool(ctx, nsIndex, "LS_EXP2/down", "down", false);
+        UaVariableNode page = rwInt16(ctx, nsIndex, "LS_EXP2/workReportCurrentPage", "workReportCurrentPage", (short) 1);
+        UaVariableNode totalPage = roInt16(ctx, nsIndex, "LS_EXP2/workReportTotalPage", "workReportTotalPage", (short) 1);
+        UaVariableNode up = rwBool(ctx, nsIndex, "LS_EXP2/workReportPagePlus", "workReportPagePlus", false);
+        UaVariableNode down = rwBool(ctx, nsIndex, "LS_EXP2/workReportPageMinus", "workReportPageMinus", false);
         add(nm, server, root, ict); add(nm, server, root, page); add(nm, server, root, totalPage); add(nm, server, root, up); add(nm, server, root, down);
 
         UaVariableNode[] serial = new UaVariableNode[5];
@@ -138,8 +138,8 @@ public class ZES_opcUaServerRunner implements ApplicationRunner
             boolean u=Boolean.TRUE.equals(up.getValue().getValue().getValue());
             boolean d=Boolean.TRUE.equals(down.getValue().getValue().getValue());
             short req=((Number)page.getValue().getValue().getValue()).shortValue();
-            if(u){req=(short)Math.max(1,cur[0]-1); up.setValue(new DataValue(new Variant(false)));}
-            if(d){req=(short)Math.min(pages,cur[0]+1); down.setValue(new DataValue(new Variant(false)));}
+            if(u){req=(short)Math.min(pages,cur[0]+1); up.setValue(new DataValue(new Variant(false)));}
+            if(d){req=(short)Math.max(1,cur[0]-1); down.setValue(new DataValue(new Variant(false)));}
             req=(short)Math.max(1,Math.min(pages,req));
             cur[0]=req;
             page.setValue(new DataValue(new Variant(req)));
