@@ -106,10 +106,7 @@ public class ZES_opcUaServerRunner implements ApplicationRunner
 
         UaVariableNode ict = rwString(ctx, nsIndex, "LS_EXP2/selectedIctNumber", "selectedIctNumber", "P0208258");
         UaVariableNode page = rwInt16(ctx, nsIndex, "LS_EXP2/workReportCurrentPage", "workReportCurrentPage", (short) 1);
-        UaVariableNode totalPage = roInt16(ctx, nsIndex, "LS_EXP2/workReportTotalPage", "workReportTotalPage", (short) 1);
-        UaVariableNode up = rwBool(ctx, nsIndex, "LS_EXP2/workReportPagePlus", "workReportPagePlus", false);
-        UaVariableNode down = rwBool(ctx, nsIndex, "LS_EXP2/workReportPageMinus", "workReportPageMinus", false);
-        add(nm, server, root, ict); add(nm, server, root, page); add(nm, server, root, totalPage); add(nm, server, root, up); add(nm, server, root, down);
+        add(nm, server, root, ict); add(nm, server, root, page);
 
         UaVariableNode[] serial = new UaVariableNode[5];
         UaVariableNode[] pname = new UaVariableNode[5];
@@ -133,13 +130,8 @@ public class ZES_opcUaServerRunner implements ApplicationRunner
             String ictNo=String.valueOf(ict.getValue().getValue().getValue());
             List<ZES_opcUaWorkItem> items=ZES_gv_workItemProvider.ZES_getWorkItemsByIctNumber(ictNo);
             short pages=(short)Math.max(1, (items.size()+4)/5);
-            totalPage.setValue(new DataValue(new Variant(pages)));
-
-            boolean u=Boolean.TRUE.equals(up.getValue().getValue().getValue());
-            boolean d=Boolean.TRUE.equals(down.getValue().getValue().getValue());
             short req=((Number)page.getValue().getValue().getValue()).shortValue();
-            if(u){req=(short)Math.min(pages,cur[0]+1); up.setValue(new DataValue(new Variant(false)));}
-            if(d){req=(short)Math.max(1,cur[0]-1); down.setValue(new DataValue(new Variant(false)));}
+            // validation: 1 <= CurrentPage <= total pages
             req=(short)Math.max(1,Math.min(pages,req));
             cur[0]=req;
             page.setValue(new DataValue(new Variant(req)));
@@ -163,5 +155,4 @@ public class ZES_opcUaServerRunner implements ApplicationRunner
     private UaVariableNode rwString(UaNodeContext c,UShort n,String id,String b,String v){ UaVariableNode x= roString(c,n,id,b,v); x.setAccessLevel(AccessLevel.toValue(AccessLevel.READ_WRITE)); x.setUserAccessLevel(AccessLevel.toValue(AccessLevel.READ_WRITE)); return x; }
     private UaVariableNode roInt16(UaNodeContext c,UShort n,String id,String b,short v){ UaVariableNode x= UaVariableNode.builder(c).setNodeId(new NodeId(n,id)).setBrowseName(new QualifiedName(n,b)).setDisplayName(LocalizedText.english(b)).setDataType(Identifiers.Int16).setTypeDefinition(Identifiers.BaseDataVariableType).build(); x.setAccessLevel(AccessLevel.toValue(AccessLevel.READ_ONLY)); x.setUserAccessLevel(AccessLevel.toValue(AccessLevel.READ_ONLY)); x.setValue(new DataValue(new Variant(v))); return x; }
     private UaVariableNode rwInt16(UaNodeContext c,UShort n,String id,String b,short v){ UaVariableNode x= roInt16(c,n,id,b,v); x.setAccessLevel(AccessLevel.toValue(AccessLevel.READ_WRITE)); x.setUserAccessLevel(AccessLevel.toValue(AccessLevel.READ_WRITE)); return x; }
-    private UaVariableNode rwBool(UaNodeContext c,UShort n,String id,String b,boolean v){ UaVariableNode x= UaVariableNode.builder(c).setNodeId(new NodeId(n,id)).setBrowseName(new QualifiedName(n,b)).setDisplayName(LocalizedText.english(b)).setDataType(Identifiers.Boolean).setTypeDefinition(Identifiers.BaseDataVariableType).build(); x.setAccessLevel(AccessLevel.toValue(AccessLevel.READ_WRITE)); x.setUserAccessLevel(AccessLevel.toValue(AccessLevel.READ_WRITE)); x.setValue(new DataValue(new Variant(v))); return x; }
 }
