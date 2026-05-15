@@ -86,23 +86,27 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
             target[i]=roInt16(ctx,ns,"LS_EXP2/row"+r+"/target_goal","target_goal_row"+r,(short)0); process[i]=roString(ctx,ns,"LS_EXP2/row"+r+"/process","process_row"+r,""); deadline[i]=roString(ctx,ns,"LS_EXP2/row"+r+"/deadline","deadline_row"+r,"");
             add(nm,server,root,serial[i]);add(nm,server,root,pname[i]);add(nm,server,root,target[i]);add(nm,server,root,process[i]);add(nm,server,root,deadline[i]);}
 
-        ScheduledExecutorService sch= Executors.newSingleThreadScheduledExecutor(); final short[] cur={1}; final String[] lastIct={""}; final boolean[] lastEnter={false};
+        ScheduledExecutorService sch= Executors.newSingleThreadScheduledExecutor(); final short[] cur={1}; final String[] lastIct={""}; final String[] lastValidIct={""}; final boolean[] lastEnter={false};
         sch.scheduleAtFixedRate(()->{
             String ictRaw=ZES_readIctNumberSafe(ict);
             String ictNo=ZES_sanitizeIctNumber(ictRaw);
             System.out.println("[OPC-UA][ICT-TAG] rawType=" + (ict.getValue().getValue().getValue()==null?"null":ict.getValue().getValue().getValue().getClass().getName()) + ", raw=" + ictRaw + ", sanitized=" + ictNo);
+            if (!ictNo.isEmpty()) {
+                lastValidIct[0] = ictNo;
+            }
             boolean enterNow=Boolean.TRUE.equals(enter.getValue().getValue().getValue());
             boolean enterEdge=!lastEnter[0] && enterNow;
             lastEnter[0]=enterNow;
-            if (ictNo.isEmpty()) {
-                System.out.println("[OPC-UA][ICT-TAG] waiting for HMI ict_number input...");
+            String queryIct = lastValidIct[0];
+            if (queryIct.isEmpty()) {
+                System.out.println("[OPC-UA][ICT-TAG] waiting for valid HMI ict_number input...");
                 return;
             }
-            boolean ictChanged=!ictNo.equals(lastIct[0]);
-            if(ictChanged){ lastIct[0]=ictNo; cur[0]=1; page.setValue(new DataValue(new Variant((short)1))); }
+            boolean ictChanged=!queryIct.equals(lastIct[0]);
+            if(ictChanged){ lastIct[0]=queryIct; cur[0]=1; page.setValue(new DataValue(new Variant((short)1))); }
             if(enterEdge){ cur[0]=1; page.setValue(new DataValue(new Variant((short)1))); enter.setValue(new DataValue(new Variant(false))); }
 
-            List<ZES_opcUaWorkItem> items=ZES_gv_workItemProvider.ZES_getWorkItemsByIctNumber(ictNo);
+            List<ZES_opcUaWorkItem> items=ZES_gv_workItemProvider.ZES_getWorkItemsByIctNumber(queryIct);
             short pages=(short)Math.max(1,(items.size()+4)/5); totalPage.setValue(new DataValue(new Variant(pages)));
 
             short req=((Number)page.getValue().getValue().getValue()).shortValue();
@@ -117,7 +121,7 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
             int di=offset+(sel-1); ZES_opcUaWorkItem d=di<items.size()?items.get(di):new ZES_opcUaWorkItem("","","","","",(short)0);
             serialCodeDetail.setValue(new DataValue(new Variant(d.serial_code()))); processDetail.setValue(new DataValue(new Variant(d.process()))); targetGoalDetail.setValue(new DataValue(new Variant(d.target_goal())));
 
-            System.out.println("[OPC-UA] polling cycle running... ict="+ictNo+", page="+req+"/"+pages+", selectedRow="+sel);
+            System.out.println("[OPC-UA] polling cycle running... ict="+queryIct+", page="+req+"/"+pages+", selectedRow="+sel);
         },0,500, TimeUnit.MILLISECONDS);
         Runtime.getRuntime().addShutdownHook(new Thread(sch::shutdownNow));
     }
