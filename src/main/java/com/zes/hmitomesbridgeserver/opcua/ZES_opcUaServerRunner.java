@@ -68,7 +68,7 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
         UaFolderNode root=new UaFolderNode(ctx,new NodeId(ns,"LS_EXP2"),new QualifiedName(ns,"LS_EXP2"),LocalizedText.english("LS_EXP2"));
         nm.addNode(root); nm.addReferences(new Reference(Identifiers.ObjectsFolder,Identifiers.Organizes,root.getNodeId().expanded(),true),server.getNamespaceTable());
 
-        UaVariableNode ict=rwString(ctx,ns,"LS_EXP2/selectedIctNumber","selectedIctNumber","");
+        UaVariableNode ict=rwInt32(ctx,ns,"LS_EXP2/selectedIctNumber","selectedIctNumber",0);
         UaVariableNode enter=rwBool(ctx,ns,"LS_EXP2/workOrderPageEnter","workOrderPageEnter",false);
         UaVariableNode page=rwInt16(ctx,ns,"LS_EXP2/workReportCurrentPage","workReportCurrentPage",(short)1);
         UaVariableNode plus=rwBool(ctx,ns,"LS_EXP2/workReportPagePlus","workReportPagePlus",false);
@@ -142,7 +142,7 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
         if (raw == null) return "";
         String v = raw.replace("\u0000", "").trim();
         if (v.isEmpty()) return "";
-        if (!v.matches("^P\\d{7}$")) {
+        if (!v.matches("[A-Za-z0-9_-]+")) {
             System.out.println("[OPC-UA][ICT-TAG] invalid ict_number format from HMI: '" + v + "'");
             return "";
         }
@@ -154,5 +154,7 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
     private UaVariableNode rwString(UaNodeContext c,UShort n,String id,String b,String v){UaVariableNode x=roString(c,n,id,b,v);x.setAccessLevel(AccessLevel.toValue(AccessLevel.READ_WRITE));x.setUserAccessLevel(AccessLevel.toValue(AccessLevel.READ_WRITE));return x;}
     private UaVariableNode roInt16(UaNodeContext c,UShort n,String id,String b,short v){UaVariableNode x= UaVariableNode.builder(c).setNodeId(new NodeId(n,id)).setBrowseName(new QualifiedName(n,b)).setDisplayName(LocalizedText.english(b)).setDataType(Identifiers.Int16).setTypeDefinition(Identifiers.BaseDataVariableType).build();x.setAccessLevel(AccessLevel.toValue(AccessLevel.READ_ONLY));x.setUserAccessLevel(AccessLevel.toValue(AccessLevel.READ_ONLY));x.setValue(new DataValue(new Variant(v)));return x;}
     private UaVariableNode rwInt16(UaNodeContext c,UShort n,String id,String b,short v){UaVariableNode x=roInt16(c,n,id,b,v);x.setAccessLevel(AccessLevel.toValue(AccessLevel.READ_WRITE));x.setUserAccessLevel(AccessLevel.toValue(AccessLevel.READ_WRITE));return x;}
+    private UaVariableNode roInt32(UaNodeContext c,UShort n,String id,String b,int v){UaVariableNode x= UaVariableNode.builder(c).setNodeId(new NodeId(n,id)).setBrowseName(new QualifiedName(n,b)).setDisplayName(LocalizedText.english(b)).setDataType(Identifiers.Int32).setTypeDefinition(Identifiers.BaseDataVariableType).build();x.setAccessLevel(AccessLevel.toValue(AccessLevel.READ_ONLY));x.setUserAccessLevel(AccessLevel.toValue(AccessLevel.READ_ONLY));x.setValue(new DataValue(new Variant(v)));return x;}
+    private UaVariableNode rwInt32(UaNodeContext c,UShort n,String id,String b,int v){UaVariableNode x=roInt32(c,n,id,b,v);x.setAccessLevel(AccessLevel.toValue(AccessLevel.READ_WRITE));x.setUserAccessLevel(AccessLevel.toValue(AccessLevel.READ_WRITE));return x;}
     private UaVariableNode rwBool(UaNodeContext c,UShort n,String id,String b,boolean v){UaVariableNode x= UaVariableNode.builder(c).setNodeId(new NodeId(n,id)).setBrowseName(new QualifiedName(n,b)).setDisplayName(LocalizedText.english(b)).setDataType(Identifiers.Boolean).setTypeDefinition(Identifiers.BaseDataVariableType).build();x.setAccessLevel(AccessLevel.toValue(AccessLevel.READ_WRITE));x.setUserAccessLevel(AccessLevel.toValue(AccessLevel.READ_WRITE));x.setValue(new DataValue(new Variant(v)));return x;}
 }
