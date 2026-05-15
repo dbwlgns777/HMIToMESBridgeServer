@@ -23,8 +23,46 @@ public interface ZES_workOrderMapper
     @Select("select facility_code from ZES_Authentication.zes_facility_info where ict_number = #{ictNumber} and statement = 'active'")
     List<String> ZES_selectFacilityCodesByIctNumber(@Param("ictNumber") String ictNumber);
 
+    @Select("""
+            select facility_code, company_code
+            from ZES_Authentication.zes_facility_info
+            where ict_number = #{ictNumber}
+              and statement = 'active'
+            limit 1
+            """)
+    Map<String, Object> ZES_selectFacilityAndCompanyByIctNumber(@Param("ictNumber") String ictNumber);
+
     @Select("select monitoring_type_code from ZES_Authentication.pms_monitoring_info where FIND_IN_SET(#{facilityCode}, facility_code) > 0 and statement = 'active'")
     List<String> ZES_selectMonitoringTypeCodes(@Param("facilityCode") String facilityCode);
+
+    @Select("""
+            select work_order_code
+            from ZES_Authentication.zes_work_order_info
+            where company_code = #{companyCode}
+              and (work_statement = 'before' or work_statement = 'working')
+              and deadline >= #{today}
+              and statement = 'active'
+            order by deadline desc
+            """)
+    List<String> ZES_selectWorkOrderCodesByCompanyCodeAndToday(@Param("companyCode") String companyCode, @Param("today") String today);
+
+    @Select("""
+            select serial_code, product_name, product_code, cavity, process_code
+            from ZES_Authentication.zes_product_info
+            where process_code = #{processCode}
+              and statement = 'active'
+            """)
+    List<Map<String, Object>> ZES_selectProductsByProcessCode(@Param("processCode") String processCode);
+
+    @Select("""
+            select *
+            from ZES_Authentication.zes_work_order_info
+            where product_code = #{productCode}
+              and work_order_code = #{workOrderCode}
+              and statement = 'active'
+            limit 1
+            """)
+    Map<String, Object> ZES_selectWorkOrderByProductAndWorkOrder(@Param("productCode") String productCode, @Param("workOrderCode") String workOrderCode);
 
     @Select("select product_code, product_name, serial_code, process_code, cavity from ZES_Authentication.zes_product_info where process_code in (${processCodes}) and statement = 'active'")
     List<Map<String, Object>> ZES_selectProductsByProcessCodes(@Param("processCodes") String processCodes);
