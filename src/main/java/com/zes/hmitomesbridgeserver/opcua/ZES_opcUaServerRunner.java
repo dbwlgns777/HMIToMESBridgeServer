@@ -106,7 +106,12 @@ public class ZES_opcUaServerRunner implements ApplicationRunner
 
         UaVariableNode ict = rwString(ctx, nsIndex, "LS_EXP2/selectedIctNumber", "selectedIctNumber", "P0208258");
         UaVariableNode page = rwInt16(ctx, nsIndex, "LS_EXP2/workReportCurrentPage", "workReportCurrentPage", (short) 1);
-        add(nm, server, root, ict); add(nm, server, root, page);
+        UaVariableNode selectedRow = rwInt16(ctx, nsIndex, "LS_EXP2/selectedWorkOrderRow", "selectedWorkOrderRow", (short) 1);
+        UaVariableNode serialCodeDetail = roString(ctx, nsIndex, "LS_EXP2/serialCodeDetail", "serialCodeDetail", "");
+        UaVariableNode processDetail = roString(ctx, nsIndex, "LS_EXP2/processDetail", "processDetail", "");
+        UaVariableNode targetGoalDetail = roInt16(ctx, nsIndex, "LS_EXP2/targetGoalDetail", "targetGoalDetail", (short) 0);
+        add(nm, server, root, ict); add(nm, server, root, page); add(nm, server, root, selectedRow);
+        add(nm, server, root, serialCodeDetail); add(nm, server, root, processDetail); add(nm, server, root, targetGoalDetail);
 
         UaVariableNode[] serial = new UaVariableNode[5];
         UaVariableNode[] pname = new UaVariableNode[5];
@@ -137,6 +142,11 @@ public class ZES_opcUaServerRunner implements ApplicationRunner
             page.setValue(new DataValue(new Variant(req)));
 
             int offset=(req-1)*5;
+            short ZES_lv_selected = ((Number)selectedRow.getValue().getValue().getValue()).shortValue();
+            if (ZES_lv_selected < 1) ZES_lv_selected = 1;
+            if (ZES_lv_selected > 5) ZES_lv_selected = 5;
+            selectedRow.setValue(new DataValue(new Variant(ZES_lv_selected)));
+
             for(int i=0;i<5;i++){
                 int idx=offset+i;
                 ZES_opcUaWorkItem w= idx<items.size()?items.get(idx):new ZES_opcUaWorkItem("","","","","",(short)0);
@@ -146,6 +156,12 @@ public class ZES_opcUaServerRunner implements ApplicationRunner
                 process[i].setValue(new DataValue(new Variant(w.process())));
                 deadline[i].setValue(new DataValue(new Variant(w.deadline())));
             }
+
+            int ZES_lv_detailIndex = offset + (ZES_lv_selected - 1);
+            ZES_opcUaWorkItem ZES_lv_detail = ZES_lv_detailIndex < items.size() ? items.get(ZES_lv_detailIndex) : new ZES_opcUaWorkItem("","","","","",(short)0);
+            serialCodeDetail.setValue(new DataValue(new Variant(ZES_lv_detail.serial_code())));
+            processDetail.setValue(new DataValue(new Variant(ZES_lv_detail.process())));
+            targetGoalDetail.setValue(new DataValue(new Variant(ZES_lv_detail.target_goal())));
         },0,500, TimeUnit.MILLISECONDS);
         Runtime.getRuntime().addShutdownHook(new Thread(sch::shutdownNow));
     }
