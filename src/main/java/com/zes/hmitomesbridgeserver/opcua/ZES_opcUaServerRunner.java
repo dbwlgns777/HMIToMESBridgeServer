@@ -87,7 +87,7 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
             target[i]=roInt16(ctx,ns,"LS_EXP2/row"+r+"/target_goal","target_goal_row"+r,(short)0); process[i]=roString(ctx,ns,"LS_EXP2/row"+r+"/process","process_row"+r,""); deadline[i]=roString(ctx,ns,"LS_EXP2/row"+r+"/deadline","deadline_row"+r,"");
             add(nm,server,root,serial[i]);add(nm,server,root,pname[i]);add(nm,server,root,target[i]);add(nm,server,root,process[i]);add(nm,server,root,deadline[i]);}
 
-        ScheduledExecutorService sch= Executors.newSingleThreadScheduledExecutor(); final short[] cur={1}; final String[] lastIct={""}; final String[] lastValidIct={""}; final boolean[] lastEnter={false}; final short[] lastRequestManage={0}; final List<ZES_opcUaWorkItem>[] cachedItems=new List[]{List.of()};
+        ScheduledExecutorService sch= Executors.newSingleThreadScheduledExecutor(); final short[] cur={1}; final String[] lastIct={""}; final String[] lastValidIct={""}; final boolean[] lastEnter={false}; final List<ZES_opcUaWorkItem>[] cachedItems=new List[]{List.of()};
         sch.scheduleAtFixedRate(()->{
             String ictRaw=ZES_readIctNumberSafe(ict);
             String ictNo=ZES_sanitizeIctNumber(ictRaw);
@@ -109,18 +109,15 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
                 return;
             }
             short requestManageNow=ZES_readInt16Safe(requestManage);
-            boolean requestManageChangedToOne=lastRequestManage[0] != 1 && requestManageNow == 1;
-            lastRequestManage[0]=requestManageNow;
             boolean ictChanged=!queryIct.equals(lastIct[0]);
             if(ictChanged){ lastIct[0]=queryIct; cur[0]=1; page.setValue(new DataValue(new Variant((short)1))); }
             if(enterEdge){ cur[0]=1; page.setValue(new DataValue(new Variant((short)1))); enter.setValue(new DataValue(new Variant(false))); }
-            if(requestManageChangedToOne){
+            if(requestManageNow == 1){
                 cur[0]=1;
                 page.setValue(new DataValue(new Variant((short)1)));
                 cachedItems[0]=ZES_gv_workItemProvider.ZES_getWorkItemsByIctNumber(queryIct);
                 requestManage.setValue(new DataValue(new Variant((short)0)));
-                lastRequestManage[0]=0;
-                System.out.println("[OPC-UA][REQUEST-MANAGE] request_manage=1, selectedIctNumber="+queryIct+", fetchedItems="+cachedItems[0].size());
+                System.out.println("[OPC-UA][REQUEST-MANAGE] request_manage=1, selectedIctNumber="+queryIct+", fetchedItems="+cachedItems[0].size()+", request_manage reset to 0");
             }
 
             List<ZES_opcUaWorkItem> items=cachedItems[0];
