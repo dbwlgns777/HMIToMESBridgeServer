@@ -69,6 +69,7 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
         nm.addNode(root); nm.addReferences(new Reference(Identifiers.ObjectsFolder,Identifiers.Organizes,root.getNodeId().expanded(),true),server.getNamespaceTable());
 
         UaVariableNode ict=rwInt32(ctx,ns,"LS_EXP2/selectedIctNumber","selectedIctNumber",0);
+        UaVariableNode requestManage=rwInt16(ctx,ns,"LS_EXP2/request_manage","request_manage",(short)0);
         UaVariableNode enter=rwBool(ctx,ns,"LS_EXP2/workOrderPageEnter","workOrderPageEnter",false);
         UaVariableNode page=rwInt16(ctx,ns,"LS_EXP2/workReportCurrentPage","workReportCurrentPage",(short)1);
         UaVariableNode plus=rwBool(ctx,ns,"LS_EXP2/workReportPagePlus","workReportPagePlus",false);
@@ -78,7 +79,7 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
         UaVariableNode serialCodeDetail=roString(ctx,ns,"LS_EXP2/serialCodeDetail","serialCodeDetail","");
         UaVariableNode processDetail=roString(ctx,ns,"LS_EXP2/processDetail","processDetail","");
         UaVariableNode targetGoalDetail=roInt16(ctx,ns,"LS_EXP2/targetGoalDetail","targetGoalDetail",(short)0);
-        add(nm,server,root,ict);add(nm,server,root,enter);add(nm,server,root,page);add(nm,server,root,plus);add(nm,server,root,minus);add(nm,server,root,totalPage);
+        add(nm,server,root,ict);add(nm,server,root,requestManage);add(nm,server,root,enter);add(nm,server,root,page);add(nm,server,root,plus);add(nm,server,root,minus);add(nm,server,root,totalPage);
         add(nm,server,root,selectedRow);add(nm,server,root,serialCodeDetail);add(nm,server,root,processDetail);add(nm,server,root,targetGoalDetail);
 
         UaVariableNode[] serial=new UaVariableNode[5], pname=new UaVariableNode[5], target=new UaVariableNode[5], process=new UaVariableNode[5], deadline=new UaVariableNode[5];
@@ -86,7 +87,7 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
             target[i]=roInt16(ctx,ns,"LS_EXP2/row"+r+"/target_goal","target_goal_row"+r,(short)0); process[i]=roString(ctx,ns,"LS_EXP2/row"+r+"/process","process_row"+r,""); deadline[i]=roString(ctx,ns,"LS_EXP2/row"+r+"/deadline","deadline_row"+r,"");
             add(nm,server,root,serial[i]);add(nm,server,root,pname[i]);add(nm,server,root,target[i]);add(nm,server,root,process[i]);add(nm,server,root,deadline[i]);}
 
-        ScheduledExecutorService sch= Executors.newSingleThreadScheduledExecutor(); final short[] cur={1}; final String[] lastIct={""}; final String[] lastValidIct={""}; final boolean[] lastEnter={false};
+        ScheduledExecutorService sch= Executors.newSingleThreadScheduledExecutor(); final short[] cur={1}; final String[] lastIct={""}; final String[] lastValidIct={""}; final boolean[] lastEnter={false}; final short[] lastRequestManage={0}; final List<ZES_opcUaWorkItem>[] cachedItems=new List[]{List.of()};
         sch.scheduleAtFixedRate(()->{
             String ictRaw=ZES_readIctNumberSafe(ict);
             String ictNo=ZES_sanitizeIctNumber(ictRaw);
@@ -107,11 +108,22 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
                 System.out.println("[OPC-UA][ICT-TAG] waiting for normalized ict_number for DB select... raw="+queryIctRaw);
                 return;
             }
+            short requestManageNow=ZES_readInt16Safe(requestManage);
+            boolean requestManageChangedToOne=lastRequestManage[0] != 1 && requestManageNow == 1;
+            lastRequestManage[0]=requestManageNow;
             boolean ictChanged=!queryIct.equals(lastIct[0]);
             if(ictChanged){ lastIct[0]=queryIct; cur[0]=1; page.setValue(new DataValue(new Variant((short)1))); }
             if(enterEdge){ cur[0]=1; page.setValue(new DataValue(new Variant((short)1))); enter.setValue(new DataValue(new Variant(false))); }
+            if(requestManageChangedToOne){
+                cur[0]=1;
+                page.setValue(new DataValue(new Variant((short)1)));
+                cachedItems[0]=ZES_gv_workItemProvider.ZES_getWorkItemsByIctNumber(queryIct);
+                requestManage.setValue(new DataValue(new Variant((short)0)));
+                lastRequestManage[0]=0;
+                System.out.println("[OPC-UA][REQUEST-MANAGE] request_manage=1, selectedIctNumber="+queryIct+", fetchedItems="+cachedItems[0].size());
+            }
 
-            List<ZES_opcUaWorkItem> items=ZES_gv_workItemProvider.ZES_getWorkItemsByIctNumber(queryIct);
+            List<ZES_opcUaWorkItem> items=cachedItems[0];
             short pages=(short)Math.max(1,(items.size()+4)/5); totalPage.setValue(new DataValue(new Variant(pages)));
 
             short req=((Number)page.getValue().getValue().getValue()).shortValue();
@@ -143,6 +155,14 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
         Runtime.getRuntime().addShutdownHook(new Thread(sch::shutdownNow));
     }
 
+
+    private short ZES_readInt16Safe(UaVariableNode node)
+    {
+        Object raw = node.getValue().getValue().getValue();
+        if (raw instanceof Number number) return number.shortValue();
+        if (raw == null) return 0;
+        try { return Short.parseShort(String.valueOf(raw).trim()); } catch (Exception e) { return 0; }
+    }
 
     private String ZES_readIctNumberSafe(UaVariableNode ictNode)
     {
