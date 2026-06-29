@@ -23,7 +23,9 @@ import org.springframework.boot.ApplicationRunner;
 import org.springframework.stereotype.Component;
 
 import java.lang.reflect.Method;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -31,6 +33,8 @@ import java.util.concurrent.TimeUnit;
 
 @Component
 public class ZES_opcUaServerRunner implements ApplicationRunner {
+    private static final boolean USE_PAGED_DB_FETCH = true;
+    private static final short WORK_ITEMS_PAGE_SIZE = 5;
     private static final String APP_URI = "urn:lsexp2:test:opcua:server";
     private static final String BIND_IP = "192.168.89.2";
     private static final String BIND_ADDRESS = "0.0.0.0";
@@ -87,7 +91,7 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
             target[i]=roInt16(ctx,ns,"LS_EXP2/row"+r+"/target_goal","target_goal_row"+r,(short)0); process[i]=roString(ctx,ns,"LS_EXP2/row"+r+"/process","process_row"+r,""); deadline[i]=roString(ctx,ns,"LS_EXP2/row"+r+"/deadline","deadline_row"+r,"");
             add(nm,server,root,serial[i]);add(nm,server,root,pname[i]);add(nm,server,root,target[i]);add(nm,server,root,process[i]);add(nm,server,root,deadline[i]);}
 
-        ScheduledExecutorService sch= Executors.newSingleThreadScheduledExecutor(); final short[] cur={1}; final String[] lastIct={""}; final String[] lastValidIct={""}; final boolean[] lastEnter={false}; final List<ZES_opcUaWorkItem>[] cachedItems=new List[]{List.of()};
+        ScheduledExecutorService sch= Executors.newSingleThreadScheduledExecutor(); final short[] cur={1}; final short[] totalPages={1}; final String[] lastIct={""}; final String[] lastValidIct={""}; final boolean[] lastEnter={false}; final List<ZES_opcUaWorkItem>[] cachedItems=new List[]{List.of()}; final Map<Short, List<ZES_opcUaWorkItem>> pageCache=new HashMap<>();
         sch.scheduleAtFixedRate(()->{
             String ictRaw=ZES_readIctNumberSafe(ict);
             String ictNo=ZES_sanitizeIctNumber(ictRaw);
@@ -110,18 +114,27 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
             }
             short requestManageNow=ZES_readInt16Safe(requestManage);
             boolean ictChanged=!queryIct.equals(lastIct[0]);
-            if(ictChanged){ lastIct[0]=queryIct; cur[0]=1; page.setValue(new DataValue(new Variant((short)1))); }
+            if(ictChanged){ lastIct[0]=queryIct; cur[0]=1; totalPages[0]=1; pageCache.clear(); cachedItems[0]=List.of(); page.setValue(new DataValue(new Variant((short)1))); }
             if(enterEdge){ cur[0]=1; page.setValue(new DataValue(new Variant((short)1))); enter.setValue(new DataValue(new Variant(false))); }
             if(requestManageNow == 1){
                 cur[0]=1;
+                totalPages[0]=1;
+                pageCache.clear();
                 page.setValue(new DataValue(new Variant((short)1)));
-                cachedItems[0]=ZES_gv_workItemProvider.ZES_getWorkItemsByIctNumber(queryIct);
+                if(USE_PAGED_DB_FETCH){
+                    ZES_opcUaWorkItemPage firstPage=ZES_gv_workItemProvider.ZES_getWorkItemsByIctNumber(queryIct, cur[0], WORK_ITEMS_PAGE_SIZE);
+                    totalPages[0]=firstPage.totalPage();
+                    cachedItems[0]=firstPage.items();
+                    pageCache.put(cur[0], cachedItems[0]);
+                } else {
+                    cachedItems[0]=ZES_gv_workItemProvider.ZES_getWorkItemsByIctNumber(queryIct);
+                    totalPages[0]=(short)Math.max(1,(cachedItems[0].size()+WORK_ITEMS_PAGE_SIZE-1)/WORK_ITEMS_PAGE_SIZE);
+                }
                 requestManage.setValue(new DataValue(new Variant((short)0)));
                 System.out.println("[OPC-UA][REQUEST-MANAGE] request_manage=1, selectedIctNumber="+queryIct+", fetchedItems="+cachedItems[0].size()+", request_manage reset to 0");
             }
 
-            List<ZES_opcUaWorkItem> items=cachedItems[0];
-            short pages=(short)Math.max(1,(items.size()+4)/5); totalPage.setValue(new DataValue(new Variant(pages)));
+            short pages=USE_PAGED_DB_FETCH?totalPages[0]:(short)Math.max(1,(cachedItems[0].size()+WORK_ITEMS_PAGE_SIZE-1)/WORK_ITEMS_PAGE_SIZE); totalPage.setValue(new DataValue(new Variant(pages)));
 
             short req=((Number)page.getValue().getValue().getValue()).shortValue();
             boolean p=Boolean.TRUE.equals(plus.getValue().getValue().getValue()), m=Boolean.TRUE.equals(minus.getValue().getValue().getValue());
@@ -129,8 +142,27 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
             if(m){req--; minus.setValue(new DataValue(new Variant(false)));}
             req=(short)Math.max(1,Math.min(pages,req)); cur[0]=req; page.setValue(new DataValue(new Variant(req)));
 
-            int offset=(req-1)*5; short sel=((Number)selectedRow.getValue().getValue().getValue()).shortValue(); if(sel<1)sel=1; if(sel>5)sel=5; selectedRow.setValue(new DataValue(new Variant(sel)));
-            for(int i=0;i<5;i++){int idx=offset+i; ZES_opcUaWorkItem w=idx<items.size()?items.get(idx):new ZES_opcUaWorkItem("","","","","",(short)0);
+            List<ZES_opcUaWorkItem> items;
+            int offset;
+            if(USE_PAGED_DB_FETCH){
+                items=pageCache.get(req);
+                if(items==null){
+                    ZES_opcUaWorkItemPage requestedPage=ZES_gv_workItemProvider.ZES_getWorkItemsByIctNumber(queryIct, req, WORK_ITEMS_PAGE_SIZE);
+                    totalPages[0]=requestedPage.totalPage();
+                    pages=totalPages[0];
+                    totalPage.setValue(new DataValue(new Variant(pages)));
+                    items=requestedPage.items();
+                    pageCache.put(req, items);
+                    System.out.println("[OPC-UA][PAGE-FETCH] selectedIctNumber="+queryIct+", page="+req+"/"+pages+", fetchedItems="+items.size());
+                }
+                cachedItems[0]=items;
+                offset=0;
+            } else {
+                items=cachedItems[0];
+                offset=(req-1)*WORK_ITEMS_PAGE_SIZE;
+            }
+            short sel=((Number)selectedRow.getValue().getValue().getValue()).shortValue(); if(sel<1)sel=1; if(sel>WORK_ITEMS_PAGE_SIZE)sel=WORK_ITEMS_PAGE_SIZE; selectedRow.setValue(new DataValue(new Variant(sel)));
+            for(int i=0;i<WORK_ITEMS_PAGE_SIZE;i++){int idx=offset+i; ZES_opcUaWorkItem w=idx<items.size()?items.get(idx):new ZES_opcUaWorkItem("","","","","",(short)0);
                 serial[i].setValue(new DataValue(new Variant(w.serial_code()))); pname[i].setValue(new DataValue(new Variant(w.product_name()))); target[i].setValue(new DataValue(new Variant(w.target_goal()))); process[i].setValue(new DataValue(new Variant(w.process()))); deadline[i].setValue(new DataValue(new Variant(w.deadline())));}
             int di=offset+(sel-1); ZES_opcUaWorkItem d=di<items.size()?items.get(di):new ZES_opcUaWorkItem("","","","","",(short)0);
             serialCodeDetail.setValue(new DataValue(new Variant(d.serial_code()))); processDetail.setValue(new DataValue(new Variant(d.process()))); targetGoalDetail.setValue(new DataValue(new Variant(d.target_goal())));
