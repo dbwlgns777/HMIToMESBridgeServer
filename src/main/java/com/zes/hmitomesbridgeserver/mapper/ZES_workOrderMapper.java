@@ -66,9 +66,9 @@ public interface ZES_workOrderMapper
 
     @Select("select product_code, product_name, serial_code, process_code, cavity from ZES_Authentication.zes_product_info where process_code in (${processCodes}) and statement = 'active'")
     List<Map<String, Object>> ZES_selectProductsByProcessCodes(@Param("processCodes") String processCodes);
+
     @Select("select product_code, product_name, serial_code, process_code, cavity from ZES_Authentication.zes_product_info where product_code = #{productCode} and statement = 'active' limit 1")
     Map<String, Object> ZES_selectProductByProductCode(@Param("productCode") String productCode);
-
 
     @Select("""
             select work_order_code, unique_work_order_number, instruction_date, orders_code, deadline, target_production,
@@ -82,8 +82,8 @@ public interface ZES_workOrderMapper
             order by instruction_date
             """)
     List<Map<String, Object>> ZES_selectActiveWorkOrdersByProductCodes(@Param("productCodes") String productCodes,
-                                                                        @Param("instructionDateBefore") String instructionDateBefore,
-                                                                        @Param("deadlineAfter") String deadlineAfter);
+                                                                       @Param("instructionDateBefore") String instructionDateBefore,
+                                                                       @Param("deadlineAfter") String deadlineAfter);
 
     @Select("""
             select work_order_code, unique_work_order_number, instruction_date, orders_code, deadline, target_production,
@@ -114,7 +114,7 @@ public interface ZES_workOrderMapper
             limit 1
             """)
     Map<String, Object> ZES_selectProcessDefectManagement(@Param("processDefectCode") String processDefectCode,
-                                                           @Param("workHistoryCode") String workHistoryCode);
+                                                          @Param("workHistoryCode") String workHistoryCode);
 
     @Select("""
             select count(*)
@@ -129,7 +129,7 @@ public interface ZES_workOrderMapper
               on w.product_code = p.product_code
              and w.company_code = f.company_code
              and (w.work_statement = 'before' or w.work_statement = 'working')
-             and w.deadline >= #{today}
+             and replace(w.deadline, '.', '-') >= #{today}
              and w.statement = 'active'
             where f.ict_number = #{ictNumber}
               and f.statement = 'active'
@@ -151,7 +151,7 @@ public interface ZES_workOrderMapper
               on w.product_code = p.product_code
              and w.company_code = f.company_code
              and (w.work_statement = 'before' or w.work_statement = 'working')
-             and w.deadline >= #{today}
+             and replace(w.deadline, '.', '-') >= #{today}
              and w.statement = 'active'
             where f.ict_number = #{ictNumber}
               and f.statement = 'active'

@@ -13,7 +13,9 @@ public class ZES_opcUaService
 {
     public String ZES_readNodeValue(String endpointUrl, String nodeId) throws Exception
     {
+        System.out.println("endpointUrl =>" + endpointUrl);
         OpcUaClient ZES_lv_client = OpcUaClient.create(endpointUrl);
+        System.out.println("ZES_readNodeValue =>");
 
         try
         {

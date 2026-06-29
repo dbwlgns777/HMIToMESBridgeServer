@@ -38,6 +38,4 @@ public class ZES_workOrderKioskController
     {
         return ZES_gv_workOrderKioskService.ZES_resolveMonitoringTypeCodesByIctNumber(ictNumber);
     }
-
-
 }
