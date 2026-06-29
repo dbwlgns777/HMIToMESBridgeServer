@@ -115,4 +115,51 @@ public interface ZES_workOrderMapper
             """)
     Map<String, Object> ZES_selectProcessDefectManagement(@Param("processDefectCode") String processDefectCode,
                                                            @Param("workHistoryCode") String workHistoryCode);
+
+    @Select("""
+            select count(*)
+            from ZES_Authentication.zes_facility_info f
+            join ZES_Authentication.pms_monitoring_info m
+              on FIND_IN_SET(f.facility_code, m.facility_code) > 0
+             and m.statement = 'active'
+            join ZES_Authentication.zes_product_info p
+              on p.process_code = m.monitoring_type_code
+             and p.statement = 'active'
+            join ZES_Authentication.zes_work_order_info w
+              on w.product_code = p.product_code
+             and w.company_code = f.company_code
+             and (w.work_statement = 'before' or w.work_statement = 'working')
+             and w.deadline >= #{today}
+             and w.statement = 'active'
+            where f.ict_number = #{ictNumber}
+              and f.statement = 'active'
+            """)
+    int ZES_countOpcUaWorkItemsByIctNumber(@Param("ictNumber") String ictNumber,
+                                           @Param("today") String today);
+
+    @Select("""
+            select p.product_code, p.product_name, p.serial_code, p.process_code,
+                   w.deadline, w.target_production
+            from ZES_Authentication.zes_facility_info f
+            join ZES_Authentication.pms_monitoring_info m
+              on FIND_IN_SET(f.facility_code, m.facility_code) > 0
+             and m.statement = 'active'
+            join ZES_Authentication.zes_product_info p
+              on p.process_code = m.monitoring_type_code
+             and p.statement = 'active'
+            join ZES_Authentication.zes_work_order_info w
+              on w.product_code = p.product_code
+             and w.company_code = f.company_code
+             and (w.work_statement = 'before' or w.work_statement = 'working')
+             and w.deadline >= #{today}
+             and w.statement = 'active'
+            where f.ict_number = #{ictNumber}
+              and f.statement = 'active'
+            order by w.deadline desc, w.work_order_code desc, p.product_code
+            limit #{size} offset #{offset}
+            """)
+    List<Map<String, Object>> ZES_selectOpcUaWorkItemsByIctNumber(@Param("ictNumber") String ictNumber,
+                                                                  @Param("today") String today,
+                                                                  @Param("size") int size,
+                                                                  @Param("offset") int offset);
 }
