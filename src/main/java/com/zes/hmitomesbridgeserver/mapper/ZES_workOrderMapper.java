@@ -129,7 +129,7 @@ public interface ZES_workOrderMapper
               on w.product_code = p.product_code
              and w.company_code = f.company_code
              and (w.work_statement = 'before' or w.work_statement = 'working')
-             and replace(w.deadline, '.', '-') >= #{today}
+             and str_to_date(replace(w.deadline, '.', '-'), '%Y-%m-%d') >= str_to_date(#{today}, '%Y-%m-%d')
              and w.statement = 'active'
             where f.ict_number = #{ictNumber}
               and f.statement = 'active'
@@ -151,11 +151,11 @@ public interface ZES_workOrderMapper
               on w.product_code = p.product_code
              and w.company_code = f.company_code
              and (w.work_statement = 'before' or w.work_statement = 'working')
-             and replace(w.deadline, '.', '-') >= #{today}
+             and str_to_date(replace(w.deadline, '.', '-'), '%Y-%m-%d') >= str_to_date(#{today}, '%Y-%m-%d')
              and w.statement = 'active'
             where f.ict_number = #{ictNumber}
               and f.statement = 'active'
-            order by w.deadline desc, w.work_order_code desc, p.product_code
+            order by datediff(str_to_date(replace(w.deadline, '.', '-'), '%Y-%m-%d'), str_to_date(#{today}, '%Y-%m-%d')) asc, w.work_order_code desc, p.product_code
             limit #{size} offset #{offset}
             """)
     List<Map<String, Object>> ZES_selectOpcUaWorkItemsByIctNumber(@Param("ictNumber") String ictNumber,
