@@ -139,7 +139,7 @@ public interface ZES_workOrderMapper
 
     @Select("""
             select p.product_code, p.product_name, p.serial_code, p.process_code,
-                   w.deadline, w.target_production
+                   coalesce(pt.process_name, '') as process_row, w.deadline, w.target_production
             from ZES_Authentication.zes_facility_info f
             join ZES_Authentication.pms_monitoring_info m
               on FIND_IN_SET(f.facility_code, m.facility_code) > 0
@@ -147,6 +147,9 @@ public interface ZES_workOrderMapper
             join ZES_Authentication.zes_product_info p
               on p.process_code = m.monitoring_type_code
              and p.statement = 'active'
+            left join ZES_Authentication.zes_process_type_info pt
+              on pt.process_code = p.process_code
+            and pt.statement = 'active'
             join ZES_Authentication.zes_work_order_info w
               on w.product_code = p.product_code
              and w.company_code = f.company_code

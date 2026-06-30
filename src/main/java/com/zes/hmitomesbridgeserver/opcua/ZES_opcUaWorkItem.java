@@ -4,8 +4,8 @@ public record ZES_opcUaWorkItem(
         String product_code,
         String product_name,
         String serial_code,
-        String process,
+        String process_row,
         String deadline,
-        short target_goal
+        String target_goal
 ) {
 }

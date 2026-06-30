@@ -73,9 +73,9 @@ public class ZES_dbWorkItemProvider implements ZES_opcUaWorkItemProvider
                     String.valueOf(ZES_lv_row.getOrDefault("product_code", "")),
                     String.valueOf(ZES_lv_row.getOrDefault("product_name", "")),
                     String.valueOf(ZES_lv_row.getOrDefault("serial_code", "")),
-                    String.valueOf(ZES_lv_row.getOrDefault("process_code", "")),
+                    String.valueOf(ZES_lv_row.getOrDefault("process_row", "")),
                     String.valueOf(ZES_lv_row.getOrDefault("deadline", "")),
-                    ZES_parseTargetGoal(ZES_lv_row.get("target_production"))
+                    String.valueOf(ZES_lv_row.getOrDefault("target_production", ""))
             ));
         }
 
@@ -88,9 +88,9 @@ public class ZES_dbWorkItemProvider implements ZES_opcUaWorkItemProvider
                 ZES_lv_workOrderRow.getString("productCode"),
                 ZES_lv_workOrderRow.getString("productName"),
                 ZES_lv_workOrderRow.getString("serialCode"),
-                ZES_lv_workOrderRow.getString("processCode"),
+                ZES_lv_workOrderRow.getString("processName"),
                 ZES_lv_workOrderRow.getString("deadline"),
-                ZES_parseTargetGoal(ZES_lv_workOrderRow.get("targetProduction"))
+                ZES_lv_workOrderRow.getString("targetProduction")
         );
     }
 
