@@ -70,12 +70,17 @@ public class ZES_dbWorkItemProvider implements ZES_opcUaWorkItemProvider
         for (Map<String, Object> ZES_lv_row : ZES_lv_rows)
         {
             ZES_lv_items.add(new ZES_opcUaWorkItem(
-                    String.valueOf(ZES_lv_row.getOrDefault("product_code", "")),
-                    String.valueOf(ZES_lv_row.getOrDefault("product_name", "")),
-                    String.valueOf(ZES_lv_row.getOrDefault("serial_code", "")),
-                    String.valueOf(ZES_lv_row.getOrDefault("process_code", "")),
-                    String.valueOf(ZES_lv_row.getOrDefault("deadline", "")),
-                    ZES_parseTargetGoal(ZES_lv_row.get("target_production"))
+                    ZES_toStringOrEmpty(ZES_lv_row.get("product_code")),
+                    ZES_toStringOrEmpty(ZES_lv_row.get("product_name")),
+                    ZES_toStringOrEmpty(ZES_lv_row.get("serial_code")),
+                    ZES_toStringOrEmpty(ZES_lv_row.get("process_row")),
+                    ZES_toStringOrEmpty(ZES_lv_row.get("deadline")),
+                    ZES_toStringOrEmpty(ZES_lv_row.get("target_production")),
+                    ZES_toStringOrEmpty(ZES_lv_row.get("facility_name")),
+                    ZES_toStringOrEmpty(ZES_lv_row.get("facility_code")),
+                    ZES_toStringOrEmpty(ZES_lv_row.get("process_defect_code")),
+                    ZES_toStringOrEmpty(ZES_lv_row.get("process_defect_name")),
+                    ZES_toStringOrEmpty(ZES_lv_row.get("company_code"))
             ));
         }
 
@@ -85,18 +90,23 @@ public class ZES_dbWorkItemProvider implements ZES_opcUaWorkItemProvider
     private ZES_opcUaWorkItem ZES_toWorkItem(JSONObject ZES_lv_workOrderRow)
     {
         return new ZES_opcUaWorkItem(
-                ZES_lv_workOrderRow.getString("productCode"),
-                ZES_lv_workOrderRow.getString("productName"),
-                ZES_lv_workOrderRow.getString("serialCode"),
-                ZES_lv_workOrderRow.getString("processCode"),
-                ZES_lv_workOrderRow.getString("deadline"),
-                ZES_parseTargetGoal(ZES_lv_workOrderRow.get("targetProduction"))
+                ZES_toStringOrEmpty(ZES_lv_workOrderRow.get("productCode")),
+                ZES_toStringOrEmpty(ZES_lv_workOrderRow.get("productName")),
+                ZES_toStringOrEmpty(ZES_lv_workOrderRow.get("serialCode")),
+                ZES_toStringOrEmpty(ZES_lv_workOrderRow.get("processName")),
+                ZES_toStringOrEmpty(ZES_lv_workOrderRow.get("deadline")),
+                ZES_toStringOrEmpty(ZES_lv_workOrderRow.get("targetProduction")),
+                ZES_toStringOrEmpty(ZES_lv_workOrderRow.get("facilityName")),
+                ZES_toStringOrEmpty(ZES_lv_workOrderRow.get("facilityCode")),
+                ZES_toStringOrEmpty(ZES_lv_workOrderRow.get("processDefectCode")),
+                ZES_toStringOrEmpty(ZES_lv_workOrderRow.get("processDefectName")),
+                ZES_toStringOrEmpty(ZES_lv_workOrderRow.get("companyCode"))
         );
     }
 
-    private short ZES_parseTargetGoal(Object targetProduction)
+    private String ZES_toStringOrEmpty(Object value)
     {
-        if (targetProduction == null) return 0;
-        try { return (short) Double.parseDouble(String.valueOf(targetProduction)); } catch (Exception e) { return 0; }
+        return value == null ? "" : String.valueOf(value);
     }
+
 }
