@@ -75,6 +75,9 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
         UaVariableNode ict=rwInt32(ctx,ns,"LS_EXP2/selectedIctNumber","selectedIctNumber",0);
         UaVariableNode requestManage=rwInt16(ctx,ns,"LS_EXP2/request_manage","request_manage",(short)0);
         UaVariableNode enter=rwBool(ctx,ns,"LS_EXP2/workOrderPageEnter","workOrderPageEnter",false);
+        UaVariableNode workStatus=rwInt16(ctx,ns,"LS_EXP2/workStatus","workStatus",(short)0);
+        UaVariableNode workTime=roString(ctx,ns,"LS_EXP2/workTime","workTime","00:00:00");
+        UaVariableNode pauseTime=roString(ctx,ns,"LS_EXP2/pauseTime","pauseTime","00:00:00");
         UaVariableNode page=rwInt16(ctx,ns,"LS_EXP2/workReportCurrentPage","workReportCurrentPage",(short)1);
         UaVariableNode plus=rwBool(ctx,ns,"LS_EXP2/workReportPagePlus","workReportPagePlus",false);
         UaVariableNode minus=rwBool(ctx,ns,"LS_EXP2/workReportPageMinus","workReportPageMinus",false);
@@ -90,7 +93,7 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
         UaVariableNode processDefectName=roString(ctx,ns,"LS_EXP2/process_defect_name","process_defect_name","");
         UaVariableNode companyCode=roString(ctx,ns,"LS_EXP2/company_code","company_code","");
         UaVariableNode targetGoalDetail=roInt16(ctx,ns,"LS_EXP2/targetGoalDetail","targetGoalDetail",(short)0);
-        add(nm,server,root,ict);add(nm,server,root,requestManage);add(nm,server,root,enter);add(nm,server,root,page);add(nm,server,root,plus);add(nm,server,root,minus);add(nm,server,root,totalPage);
+        add(nm,server,root,ict);add(nm,server,root,requestManage);add(nm,server,root,enter);add(nm,server,root,workStatus);add(nm,server,root,workTime);add(nm,server,root,pauseTime);add(nm,server,root,page);add(nm,server,root,plus);add(nm,server,root,minus);add(nm,server,root,totalPage);
         add(nm,server,root,selectedRow);add(nm,server,root,serialCodeDetail);add(nm,server,root,productNameDetail);add(nm,server,root,processDetail);add(nm,server,root,processCodeDetail);add(nm,server,root,facilityName);add(nm,server,root,facilityCode);add(nm,server,root,processDefectCode);add(nm,server,root,processDefectName);add(nm,server,root,companyCode);add(nm,server,root,targetGoalDetail);
 
         UaVariableNode[] serial=new UaVariableNode[5], pname=new UaVariableNode[5], target=new UaVariableNode[5], process=new UaVariableNode[5], deadline=new UaVariableNode[5], processCode=new UaVariableNode[5];
@@ -99,8 +102,22 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
             processCode[i]=roString(ctx,ns,"LS_EXP2/row"+r+"/process_code","process_code_row"+r,"");
             add(nm,server,root,serial[i]);add(nm,server,root,pname[i]);add(nm,server,root,target[i]);add(nm,server,root,process[i]);add(nm,server,root,deadline[i]);add(nm,server,root,processCode[i]);}
 
-        ScheduledExecutorService sch= Executors.newSingleThreadScheduledExecutor(); final short[] cur={1}; final short[] totalPages={1}; final String[] lastIct={""}; final String[] lastValidIct={""}; final boolean[] lastEnter={false}; final List<ZES_opcUaWorkItem>[] cachedItems=new List[]{List.of()}; final Map<Short, List<ZES_opcUaWorkItem>> pageCache=new HashMap<>();
+        ScheduledExecutorService sch= Executors.newSingleThreadScheduledExecutor(); final short[] cur={1}; final short[] totalPages={1}; final String[] lastIct={""}; final String[] lastValidIct={""}; final boolean[] lastEnter={false}; final List<ZES_opcUaWorkItem>[] cachedItems=new List[]{List.of()}; final Map<Short, List<ZES_opcUaWorkItem>> pageCache=new HashMap<>(); final long[] workSeconds={0L}; final long[] pauseSeconds={0L}; final long[] lastTimerMillis={System.currentTimeMillis()}; final short[] activeWorkStatus={(short)0};
         sch.scheduleAtFixedRate(()->{
+            long timerNow=System.currentTimeMillis();
+            short workStatusNow=ZES_readInt16Safe(workStatus);
+            long elapsedSeconds=(timerNow-lastTimerMillis[0])/1000L;
+            if(elapsedSeconds > 0){
+                if(activeWorkStatus[0] == 1) workSeconds[0]+=elapsedSeconds;
+                if(activeWorkStatus[0] == 2) pauseSeconds[0]+=elapsedSeconds;
+                lastTimerMillis[0]+=elapsedSeconds*1000L;
+            }
+            if(workStatusNow != activeWorkStatus[0]){
+                activeWorkStatus[0]=workStatusNow;
+                lastTimerMillis[0]=timerNow;
+            }
+            workTime.setValue(new DataValue(new Variant(ZES_formatElapsedTime(workSeconds[0]))));
+            pauseTime.setValue(new DataValue(new Variant(ZES_formatElapsedTime(pauseSeconds[0]))));
             String ictRaw=ZES_readIctNumberSafe(ict);
             String ictNo=ZES_sanitizeIctNumber(ictRaw);
             System.out.println("[OPC-UA][ICT-TAG] rawType=" + (ict.getValue().getValue().getValue()==null?"null":ict.getValue().getValue().getValue().getClass().getName()) + ", raw=" + ictRaw + ", sanitized=" + ictNo);
@@ -196,6 +213,14 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
     private ZES_opcUaWorkItem ZES_emptyWorkItem()
     {
         return new ZES_opcUaWorkItem("", "", "", "", "", "", "", "", "", "", "");
+    }
+
+    private String ZES_formatElapsedTime(long totalSeconds)
+    {
+        long hours = totalSeconds / 3600L;
+        long minutes = (totalSeconds % 3600L) / 60L;
+        long seconds = totalSeconds % 60L;
+        return String.format("%02d:%02d:%02d", hours, minutes, seconds);
     }
 
     private short ZES_readInt16Safe(UaVariableNode node)
