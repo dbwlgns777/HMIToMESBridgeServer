@@ -83,14 +83,22 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
         UaVariableNode serialCodeDetail=roString(ctx,ns,"LS_EXP2/serialCodeDetail","serialCodeDetail","");
         UaVariableNode productNameDetail=roString(ctx,ns,"LS_EXP2/productNameDetail","productNameDetail","");
         UaVariableNode processDetail=roString(ctx,ns,"LS_EXP2/processDetail","processDetail","");
+        UaVariableNode processCodeDetail=roString(ctx,ns,"LS_EXP2/processCodeDetail","processCodeDetail","");
+        UaVariableNode facilityNameDetail=roString(ctx,ns,"LS_EXP2/facilityNameDetail","facilityNameDetail","");
+        UaVariableNode facilityCodeDetail=roString(ctx,ns,"LS_EXP2/facilityCodeDetail","facilityCodeDetail","");
+        UaVariableNode processDefectCodeDetail=roString(ctx,ns,"LS_EXP2/processDefectCodeDetail","processDefectCodeDetail","");
+        UaVariableNode processDefectNameDetail=roString(ctx,ns,"LS_EXP2/processDefectNameDetail","processDefectNameDetail","");
+        UaVariableNode companyCodeDetail=roString(ctx,ns,"LS_EXP2/companyCodeDetail","companyCodeDetail","");
         UaVariableNode targetGoalDetail=roInt16(ctx,ns,"LS_EXP2/targetGoalDetail","targetGoalDetail",(short)0);
         add(nm,server,root,ict);add(nm,server,root,requestManage);add(nm,server,root,enter);add(nm,server,root,page);add(nm,server,root,plus);add(nm,server,root,minus);add(nm,server,root,totalPage);
-        add(nm,server,root,selectedRow);add(nm,server,root,serialCodeDetail);add(nm,server,root,productNameDetail);add(nm,server,root,processDetail);add(nm,server,root,targetGoalDetail);
+        add(nm,server,root,selectedRow);add(nm,server,root,serialCodeDetail);add(nm,server,root,productNameDetail);add(nm,server,root,processDetail);add(nm,server,root,processCodeDetail);add(nm,server,root,facilityNameDetail);add(nm,server,root,facilityCodeDetail);add(nm,server,root,processDefectCodeDetail);add(nm,server,root,processDefectNameDetail);add(nm,server,root,companyCodeDetail);add(nm,server,root,targetGoalDetail);
 
-        UaVariableNode[] serial=new UaVariableNode[5], pname=new UaVariableNode[5], target=new UaVariableNode[5], process=new UaVariableNode[5], deadline=new UaVariableNode[5];
+        UaVariableNode[] serial=new UaVariableNode[5], pname=new UaVariableNode[5], target=new UaVariableNode[5], process=new UaVariableNode[5], deadline=new UaVariableNode[5], processCode=new UaVariableNode[5], facilityName=new UaVariableNode[5], facilityCode=new UaVariableNode[5], processDefectCode=new UaVariableNode[5], processDefectName=new UaVariableNode[5], companyCode=new UaVariableNode[5];
         for(int i=0;i<5;i++){int r=i+1; serial[i]=roString(ctx,ns,"LS_EXP2/row"+r+"/serial_code","serial_code_row"+r,""); pname[i]=roString(ctx,ns,"LS_EXP2/row"+r+"/product_name","product_name_row"+r,"");
             target[i]=roString(ctx,ns,"LS_EXP2/row"+r+"/target_goal","target_goal_row"+r,""); process[i]=roString(ctx,ns,"LS_EXP2/row"+r+"/process","process_row"+r,""); deadline[i]=roString(ctx,ns,"LS_EXP2/row"+r+"/deadline","deadline_row"+r,"");
-            add(nm,server,root,serial[i]);add(nm,server,root,pname[i]);add(nm,server,root,target[i]);add(nm,server,root,process[i]);add(nm,server,root,deadline[i]);}
+            processCode[i]=roString(ctx,ns,"LS_EXP2/row"+r+"/process_code","process_code_row"+r,""); facilityName[i]=roString(ctx,ns,"LS_EXP2/row"+r+"/facility_name","facility_name_row"+r,""); facilityCode[i]=roString(ctx,ns,"LS_EXP2/row"+r+"/facility_code","facility_code_row"+r,"");
+            processDefectCode[i]=roString(ctx,ns,"LS_EXP2/row"+r+"/process_defect_code","process_defect_code_row"+r,""); processDefectName[i]=roString(ctx,ns,"LS_EXP2/row"+r+"/process_defect_name","process_defect_name_row"+r,""); companyCode[i]=roString(ctx,ns,"LS_EXP2/row"+r+"/company_code","company_code_row"+r,"");
+            add(nm,server,root,serial[i]);add(nm,server,root,pname[i]);add(nm,server,root,target[i]);add(nm,server,root,process[i]);add(nm,server,root,deadline[i]);add(nm,server,root,processCode[i]);add(nm,server,root,facilityName[i]);add(nm,server,root,facilityCode[i]);add(nm,server,root,processDefectCode[i]);add(nm,server,root,processDefectName[i]);add(nm,server,root,companyCode[i]);}
 
         ScheduledExecutorService sch= Executors.newSingleThreadScheduledExecutor(); final short[] cur={1}; final short[] totalPages={1}; final String[] lastIct={""}; final String[] lastValidIct={""}; final boolean[] lastEnter={false}; final List<ZES_opcUaWorkItem>[] cachedItems=new List[]{List.of()}; final Map<Short, List<ZES_opcUaWorkItem>> pageCache=new HashMap<>();
         sch.scheduleAtFixedRate(()->{
@@ -163,10 +171,10 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
                 offset=(req-1)*WORK_ITEMS_PAGE_SIZE;
             }
             short sel=((Number)selectedRow.getValue().getValue().getValue()).shortValue(); if(sel<1)sel=1; if(sel>WORK_ITEMS_PAGE_SIZE)sel=WORK_ITEMS_PAGE_SIZE; selectedRow.setValue(new DataValue(new Variant(sel)));
-            for(int i=0;i<WORK_ITEMS_PAGE_SIZE;i++){int idx=offset+i; boolean hasItem=idx<items.size(); ZES_opcUaWorkItem w=hasItem?items.get(idx):new ZES_opcUaWorkItem("","","","","", "");
-                serial[i].setValue(new DataValue(new Variant(w.serial_code()))); pname[i].setValue(new DataValue(new Variant(w.product_name()))); target[i].setValue(new DataValue(new Variant(hasItem?String.valueOf(w.target_goal()):""))); process[i].setValue(new DataValue(new Variant(w.process_row()))); deadline[i].setValue(new DataValue(new Variant(w.deadline())));}
-            int di=offset+(sel-1); ZES_opcUaWorkItem d=di<items.size()?items.get(di):new ZES_opcUaWorkItem("","","","","","");
-            serialCodeDetail.setValue(new DataValue(new Variant(d.serial_code()))); productNameDetail.setValue(new DataValue(new Variant(d.product_name()))); processDetail.setValue(new DataValue(new Variant(d.process_row()))); targetGoalDetail.setValue(new DataValue(new Variant(d.target_goal())));
+            for(int i=0;i<WORK_ITEMS_PAGE_SIZE;i++){int idx=offset+i; boolean hasItem=idx<items.size(); ZES_opcUaWorkItem w=hasItem?items.get(idx):ZES_emptyWorkItem();
+                serial[i].setValue(new DataValue(new Variant(w.serial_code()))); pname[i].setValue(new DataValue(new Variant(w.product_name()))); target[i].setValue(new DataValue(new Variant(hasItem?String.valueOf(w.target_goal()):""))); process[i].setValue(new DataValue(new Variant(w.process_row()))); deadline[i].setValue(new DataValue(new Variant(w.deadline()))); processCode[i].setValue(new DataValue(new Variant(w.process_row()))); facilityName[i].setValue(new DataValue(new Variant(w.facility_name()))); facilityCode[i].setValue(new DataValue(new Variant(w.facility_code()))); processDefectCode[i].setValue(new DataValue(new Variant(w.process_defect_code()))); processDefectName[i].setValue(new DataValue(new Variant(w.process_defect_name()))); companyCode[i].setValue(new DataValue(new Variant(w.company_code())));}
+            int di=offset+(sel-1); ZES_opcUaWorkItem d=di<items.size()?items.get(di):ZES_emptyWorkItem();
+            serialCodeDetail.setValue(new DataValue(new Variant(d.serial_code()))); productNameDetail.setValue(new DataValue(new Variant(d.product_name()))); processDetail.setValue(new DataValue(new Variant(d.process_row()))); processCodeDetail.setValue(new DataValue(new Variant(d.process_row()))); facilityNameDetail.setValue(new DataValue(new Variant(d.facility_name()))); facilityCodeDetail.setValue(new DataValue(new Variant(d.facility_code()))); processDefectCodeDetail.setValue(new DataValue(new Variant(d.process_defect_code()))); processDefectNameDetail.setValue(new DataValue(new Variant(d.process_defect_name()))); companyCodeDetail.setValue(new DataValue(new Variant(d.company_code()))); targetGoalDetail.setValue(new DataValue(new Variant(d.target_goal())));
 
             System.out.println("[OPC-UA][DB-RESULT] itemCount="+items.size()+", queryIct="+queryIct+", page="+req+", selectedRow="+sel);
             for(int i=0;i<5;i++){
@@ -185,6 +193,11 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
         Runtime.getRuntime().addShutdownHook(new Thread(sch::shutdownNow));
     }
 
+
+    private ZES_opcUaWorkItem ZES_emptyWorkItem()
+    {
+        return new ZES_opcUaWorkItem("", "", "", "", "", "", "", "", "", "", "");
+    }
 
     private short ZES_readInt16Safe(UaVariableNode node)
     {
