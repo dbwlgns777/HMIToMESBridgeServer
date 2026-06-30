@@ -139,6 +139,9 @@ public interface ZES_workOrderMapper
 
     @Select("""
             select p.product_code, p.product_name, p.serial_code, p.process_code,
+                   coalesce(pt.process_name, '') as process_row,
+                   f.facility_name, f.facility_code, f.company_code,
+                   pd.process_defect_code, pd.process_defect_name,
                    w.deadline, w.target_production
             from ZES_Authentication.zes_facility_info f
             join ZES_Authentication.pms_monitoring_info m
@@ -147,6 +150,13 @@ public interface ZES_workOrderMapper
             join ZES_Authentication.zes_product_info p
               on p.process_code = m.monitoring_type_code
              and p.statement = 'active'
+            left join ZES_Authentication.zes_process_type_info pt
+              on pt.process_code = p.process_code
+             and pt.statement = 'active'
+            left join ZES_Authentication.zes_process_defect_info pd
+              on pd.process_code = p.process_code
+             and pd.process_defect_name = '기타'
+             and pd.statement = 'active'
             join ZES_Authentication.zes_work_order_info w
               on w.product_code = p.product_code
              and w.company_code = f.company_code

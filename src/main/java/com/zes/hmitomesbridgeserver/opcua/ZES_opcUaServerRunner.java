@@ -75,24 +75,49 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
         UaVariableNode ict=rwInt32(ctx,ns,"LS_EXP2/selectedIctNumber","selectedIctNumber",0);
         UaVariableNode requestManage=rwInt16(ctx,ns,"LS_EXP2/request_manage","request_manage",(short)0);
         UaVariableNode enter=rwBool(ctx,ns,"LS_EXP2/workOrderPageEnter","workOrderPageEnter",false);
+        UaVariableNode workStatus=rwInt16(ctx,ns,"LS_EXP2/workStatus","workStatus",(short)0);
+        UaVariableNode workTime=roString(ctx,ns,"LS_EXP2/workTime","workTime","00:00:00");
+        UaVariableNode pauseTime=roString(ctx,ns,"LS_EXP2/pauseTime","pauseTime","00:00:00");
         UaVariableNode page=rwInt16(ctx,ns,"LS_EXP2/workReportCurrentPage","workReportCurrentPage",(short)1);
         UaVariableNode plus=rwBool(ctx,ns,"LS_EXP2/workReportPagePlus","workReportPagePlus",false);
         UaVariableNode minus=rwBool(ctx,ns,"LS_EXP2/workReportPageMinus","workReportPageMinus",false);
         UaVariableNode totalPage=roInt16(ctx,ns,"LS_EXP2/workReportTotalPage","workReportTotalPage",(short)1);
         UaVariableNode selectedRow=rwInt16(ctx,ns,"LS_EXP2/selectedWorkOrderRow","selectedWorkOrderRow",(short)1);
         UaVariableNode serialCodeDetail=roString(ctx,ns,"LS_EXP2/serialCodeDetail","serialCodeDetail","");
+        UaVariableNode productNameDetail=roString(ctx,ns,"LS_EXP2/productNameDetail","productNameDetail","");
         UaVariableNode processDetail=roString(ctx,ns,"LS_EXP2/processDetail","processDetail","");
+        UaVariableNode processCodeDetail=roString(ctx,ns,"LS_EXP2/processCodeDetail","processCodeDetail","");
+        UaVariableNode facilityName=roString(ctx,ns,"LS_EXP2/facility_name","facility_name","");
+        UaVariableNode facilityCode=roString(ctx,ns,"LS_EXP2/facility_code","facility_code","");
+        UaVariableNode processDefectCode=roString(ctx,ns,"LS_EXP2/process_defect_code","process_defect_code","");
+        UaVariableNode processDefectName=roString(ctx,ns,"LS_EXP2/process_defect_name","process_defect_name","");
+        UaVariableNode companyCode=roString(ctx,ns,"LS_EXP2/company_code","company_code","");
         UaVariableNode targetGoalDetail=roInt16(ctx,ns,"LS_EXP2/targetGoalDetail","targetGoalDetail",(short)0);
-        add(nm,server,root,ict);add(nm,server,root,requestManage);add(nm,server,root,enter);add(nm,server,root,page);add(nm,server,root,plus);add(nm,server,root,minus);add(nm,server,root,totalPage);
-        add(nm,server,root,selectedRow);add(nm,server,root,serialCodeDetail);add(nm,server,root,processDetail);add(nm,server,root,targetGoalDetail);
+        add(nm,server,root,ict);add(nm,server,root,requestManage);add(nm,server,root,enter);add(nm,server,root,workStatus);add(nm,server,root,workTime);add(nm,server,root,pauseTime);add(nm,server,root,page);add(nm,server,root,plus);add(nm,server,root,minus);add(nm,server,root,totalPage);
+        add(nm,server,root,selectedRow);add(nm,server,root,serialCodeDetail);add(nm,server,root,productNameDetail);add(nm,server,root,processDetail);add(nm,server,root,processCodeDetail);add(nm,server,root,facilityName);add(nm,server,root,facilityCode);add(nm,server,root,processDefectCode);add(nm,server,root,processDefectName);add(nm,server,root,companyCode);add(nm,server,root,targetGoalDetail);
 
-        UaVariableNode[] serial=new UaVariableNode[5], pname=new UaVariableNode[5], target=new UaVariableNode[5], process=new UaVariableNode[5], deadline=new UaVariableNode[5];
+        UaVariableNode[] serial=new UaVariableNode[5], pname=new UaVariableNode[5], target=new UaVariableNode[5], process=new UaVariableNode[5], deadline=new UaVariableNode[5], processCode=new UaVariableNode[5];
         for(int i=0;i<5;i++){int r=i+1; serial[i]=roString(ctx,ns,"LS_EXP2/row"+r+"/serial_code","serial_code_row"+r,""); pname[i]=roString(ctx,ns,"LS_EXP2/row"+r+"/product_name","product_name_row"+r,"");
-            target[i]=roInt16(ctx,ns,"LS_EXP2/row"+r+"/target_goal","target_goal_row"+r,(short)0); process[i]=roString(ctx,ns,"LS_EXP2/row"+r+"/process","process_row"+r,""); deadline[i]=roString(ctx,ns,"LS_EXP2/row"+r+"/deadline","deadline_row"+r,"");
-            add(nm,server,root,serial[i]);add(nm,server,root,pname[i]);add(nm,server,root,target[i]);add(nm,server,root,process[i]);add(nm,server,root,deadline[i]);}
+            target[i]=roString(ctx,ns,"LS_EXP2/row"+r+"/target_goal","target_goal_row"+r,""); process[i]=roString(ctx,ns,"LS_EXP2/row"+r+"/process","process_row"+r,""); deadline[i]=roString(ctx,ns,"LS_EXP2/row"+r+"/deadline","deadline_row"+r,"");
+            processCode[i]=roString(ctx,ns,"LS_EXP2/row"+r+"/process_code","process_code_row"+r,"");
+            add(nm,server,root,serial[i]);add(nm,server,root,pname[i]);add(nm,server,root,target[i]);add(nm,server,root,process[i]);add(nm,server,root,deadline[i]);add(nm,server,root,processCode[i]);}
 
-        ScheduledExecutorService sch= Executors.newSingleThreadScheduledExecutor(); final short[] cur={1}; final short[] totalPages={1}; final String[] lastIct={""}; final String[] lastValidIct={""}; final boolean[] lastEnter={false}; final List<ZES_opcUaWorkItem>[] cachedItems=new List[]{List.of()}; final Map<Short, List<ZES_opcUaWorkItem>> pageCache=new HashMap<>();
+        ScheduledExecutorService sch= Executors.newSingleThreadScheduledExecutor(); final short[] cur={1}; final short[] totalPages={1}; final String[] lastIct={""}; final String[] lastValidIct={""}; final boolean[] lastEnter={false}; final List<ZES_opcUaWorkItem>[] cachedItems=new List[]{List.of()}; final Map<Short, List<ZES_opcUaWorkItem>> pageCache=new HashMap<>(); final long[] workSeconds={0L}; final long[] pauseSeconds={0L}; final long[] lastTimerMillis={System.currentTimeMillis()}; final short[] activeWorkStatus={(short)0};
         sch.scheduleAtFixedRate(()->{
+            long timerNow=System.currentTimeMillis();
+            short workStatusNow=ZES_readInt16Safe(workStatus);
+            long elapsedSeconds=(timerNow-lastTimerMillis[0])/1000L;
+            if(elapsedSeconds > 0){
+                if(activeWorkStatus[0] == 1) workSeconds[0]+=elapsedSeconds;
+                if(activeWorkStatus[0] == 2) pauseSeconds[0]+=elapsedSeconds;
+                lastTimerMillis[0]+=elapsedSeconds*1000L;
+            }
+            if(workStatusNow != activeWorkStatus[0]){
+                activeWorkStatus[0]=workStatusNow;
+                lastTimerMillis[0]=timerNow;
+            }
+            workTime.setValue(new DataValue(new Variant(ZES_formatElapsedTime(workSeconds[0]))));
+            pauseTime.setValue(new DataValue(new Variant(ZES_formatElapsedTime(pauseSeconds[0]))));
             String ictRaw=ZES_readIctNumberSafe(ict);
             String ictNo=ZES_sanitizeIctNumber(ictRaw);
             System.out.println("[OPC-UA][ICT-TAG] rawType=" + (ict.getValue().getValue().getValue()==null?"null":ict.getValue().getValue().getValue().getClass().getName()) + ", raw=" + ictRaw + ", sanitized=" + ictNo);
@@ -162,10 +187,10 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
                 offset=(req-1)*WORK_ITEMS_PAGE_SIZE;
             }
             short sel=((Number)selectedRow.getValue().getValue().getValue()).shortValue(); if(sel<1)sel=1; if(sel>WORK_ITEMS_PAGE_SIZE)sel=WORK_ITEMS_PAGE_SIZE; selectedRow.setValue(new DataValue(new Variant(sel)));
-            for(int i=0;i<WORK_ITEMS_PAGE_SIZE;i++){int idx=offset+i; ZES_opcUaWorkItem w=idx<items.size()?items.get(idx):new ZES_opcUaWorkItem("","","","","",(short)0);
-                serial[i].setValue(new DataValue(new Variant(w.serial_code()))); pname[i].setValue(new DataValue(new Variant(w.product_name()))); target[i].setValue(new DataValue(new Variant(w.target_goal()))); process[i].setValue(new DataValue(new Variant(w.process()))); deadline[i].setValue(new DataValue(new Variant(w.deadline())));}
-            int di=offset+(sel-1); ZES_opcUaWorkItem d=di<items.size()?items.get(di):new ZES_opcUaWorkItem("","","","","",(short)0);
-            serialCodeDetail.setValue(new DataValue(new Variant(d.serial_code()))); processDetail.setValue(new DataValue(new Variant(d.process()))); targetGoalDetail.setValue(new DataValue(new Variant(d.target_goal())));
+            for(int i=0;i<WORK_ITEMS_PAGE_SIZE;i++){int idx=offset+i; boolean hasItem=idx<items.size(); ZES_opcUaWorkItem w=hasItem?items.get(idx):ZES_emptyWorkItem();
+                serial[i].setValue(new DataValue(new Variant(w.serial_code()))); pname[i].setValue(new DataValue(new Variant(w.product_name()))); target[i].setValue(new DataValue(new Variant(hasItem?String.valueOf(w.target_goal()):""))); process[i].setValue(new DataValue(new Variant(w.process_row()))); deadline[i].setValue(new DataValue(new Variant(w.deadline()))); processCode[i].setValue(new DataValue(new Variant(w.process_row())));}
+            int di=offset+(sel-1); ZES_opcUaWorkItem d=di<items.size()?items.get(di):ZES_emptyWorkItem();
+            serialCodeDetail.setValue(new DataValue(new Variant(d.serial_code()))); productNameDetail.setValue(new DataValue(new Variant(d.product_name()))); processDetail.setValue(new DataValue(new Variant(d.process_row()))); processCodeDetail.setValue(new DataValue(new Variant(d.process_row()))); facilityName.setValue(new DataValue(new Variant(d.facility_name()))); facilityCode.setValue(new DataValue(new Variant(d.facility_code()))); processDefectCode.setValue(new DataValue(new Variant(d.process_defect_code()))); processDefectName.setValue(new DataValue(new Variant(d.process_defect_name()))); companyCode.setValue(new DataValue(new Variant(d.company_code()))); targetGoalDetail.setValue(new DataValue(new Variant(d.target_goal())));
 
             System.out.println("[OPC-UA][DB-RESULT] itemCount="+items.size()+", queryIct="+queryIct+", page="+req+", selectedRow="+sel);
             for(int i=0;i<5;i++){
@@ -177,13 +202,26 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
                 int row=i+1;
                 System.out.println("[OPC-UA][WORKITEM-TAG] row"+row+"_serialCode="+serialTagVal+", row"+row+"_productName="+pnameTagVal+", row"+row+"_targetGoal="+targetTagVal+", row"+row+"_process="+processTagVal+", row"+row+"_deadline="+deadlineTagVal);
             }
-            System.out.println("[OPC-UA][WORKITEM-DETAIL-TAG] serialCodeDetail="+serialCodeDetail.getValue().getValue().getValue()+", processDetail="+processDetail.getValue().getValue().getValue()+", targetGoalDetail="+targetGoalDetail.getValue().getValue().getValue());
+            System.out.println("[OPC-UA][WORKITEM-DETAIL-TAG] serialCodeDetail="+serialCodeDetail.getValue().getValue().getValue()+", productNameDetail="+productNameDetail.getValue().getValue().getValue()+", processDetail="+processDetail.getValue().getValue().getValue()+", targetGoalDetail="+targetGoalDetail.getValue().getValue().getValue());
 
             System.out.println("[OPC-UA] polling cycle running... ict="+queryIct+", page="+req+"/"+pages+", selectedRow="+sel);
         },0,500, TimeUnit.MILLISECONDS);
         Runtime.getRuntime().addShutdownHook(new Thread(sch::shutdownNow));
     }
 
+
+    private ZES_opcUaWorkItem ZES_emptyWorkItem()
+    {
+        return new ZES_opcUaWorkItem("", "", "", "", "", "", "", "", "", "", "");
+    }
+
+    private String ZES_formatElapsedTime(long totalSeconds)
+    {
+        long hours = totalSeconds / 3600L;
+        long minutes = (totalSeconds % 3600L) / 60L;
+        long seconds = totalSeconds % 60L;
+        return String.format("%02d:%02d:%02d", hours, minutes, seconds);
+    }
 
     private short ZES_readInt16Safe(UaVariableNode node)
     {
