@@ -103,7 +103,7 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
             processCode[i]=roString(ctx,ns,"LS_EXP2/row"+r+"/process_code","process_code_row"+r,""); workOrderCode[i]=roString(ctx,ns,"LS_EXP2/row"+r+"/workOrderCode","workOrderCode_row"+r,"");
             add(nm,server,root,serial[i]);add(nm,server,root,pname[i]);add(nm,server,root,target[i]);add(nm,server,root,process[i]);add(nm,server,root,deadline[i]);add(nm,server,root,processCode[i]);add(nm,server,root,workOrderCode[i]);}
 
-        ScheduledExecutorService sch= Executors.newSingleThreadScheduledExecutor(); final short[] cur={1}; final short[] totalPages={1}; final String[] lastIct={""}; final String[] lastValidIct={""}; final boolean[] lastEnter={false}; final List<ZES_opcUaWorkItem>[] cachedItems=new List[]{List.of()}; final Map<Short, List<ZES_opcUaWorkItem>> pageCache=new HashMap<>(); final long[] workSeconds={0L}; final long[] pauseSeconds={0L}; final long[] lastTimerMillis={System.currentTimeMillis()}; final short[] activeWorkStatus={(short)0};
+        ScheduledExecutorService sch= Executors.newSingleThreadScheduledExecutor(); final short[] cur={1}; final short[] totalPages={1}; final String[] lastIct={""}; final String[] lastValidIct={""}; final boolean[] lastEnter={false}; final List<ZES_opcUaWorkItem>[] cachedItems=new List[]{List.of()}; final Map<Short, List<ZES_opcUaWorkItem>> pageCache=new HashMap<>(); final long[] workSeconds={0L}; final long[] pauseSeconds={0L}; final long[] lastTimerMillis={System.currentTimeMillis()}; final short[] activeWorkStatus={(short)0}; final boolean[] workStartCaptured={false}; final String[] workStartTime={""}; final String[] workEndTime={""};
         sch.scheduleAtFixedRate(()->{
             long timerNow=System.currentTimeMillis();
             short workStatusNow=ZES_readInt16Safe(workStatus);
@@ -114,6 +114,15 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
                 lastTimerMillis[0]+=elapsedSeconds*1000L;
             }
             if(workStatusNow != activeWorkStatus[0]){
+                if(workStatusNow == 1 && !workStartCaptured[0]){
+                    workStartTime[0]=ZES_formatCurrentTime();
+                    workStartCaptured[0]=true;
+                    System.out.println("[OPC-UA][WORK-START] workStatus=1, workStartTime="+workStartTime[0]);
+                }
+                if(workStatusNow == 3){
+                    workEndTime[0]=ZES_formatCurrentTime();
+                    System.out.println("[OPC-UA][WORK-END-DEBUG] workStatus=3, companyCode="+companyCode.getValue().getValue().getValue()+", workOrderCodeDetail="+workOrderCodeDetail.getValue().getValue().getValue()+", workStartTime="+workStartTime[0]+", workEndTime="+workEndTime[0]);
+                }
                 activeWorkStatus[0]=workStatusNow;
                 lastTimerMillis[0]=timerNow;
             }
@@ -222,6 +231,11 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
         long minutes = (totalSeconds % 3600L) / 60L;
         long seconds = totalSeconds % 60L;
         return String.format("%02d:%02d:%02d", hours, minutes, seconds);
+    }
+
+    private String ZES_formatCurrentTime()
+    {
+        return java.time.LocalTime.now().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss"));
     }
 
     private short ZES_readInt16Safe(UaVariableNode node)
