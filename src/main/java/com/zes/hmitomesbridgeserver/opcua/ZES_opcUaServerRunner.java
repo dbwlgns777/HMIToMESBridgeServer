@@ -103,7 +103,7 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
             processCode[i]=roString(ctx,ns,"LS_EXP2/row"+r+"/process_code","process_code_row"+r,""); workOrderCode[i]=roString(ctx,ns,"LS_EXP2/row"+r+"/workOrderCode","workOrderCode_row"+r,"");
             add(nm,server,root,serial[i]);add(nm,server,root,pname[i]);add(nm,server,root,target[i]);add(nm,server,root,process[i]);add(nm,server,root,deadline[i]);add(nm,server,root,processCode[i]);add(nm,server,root,workOrderCode[i]);}
 
-        ScheduledExecutorService sch= Executors.newSingleThreadScheduledExecutor(); final short[] cur={1}; final short[] totalPages={1}; final String[] lastIct={""}; final String[] lastValidIct={""}; final boolean[] lastEnter={false}; final List<ZES_opcUaWorkItem>[] cachedItems=new List[]{List.of()}; final Map<Short, List<ZES_opcUaWorkItem>> pageCache=new HashMap<>(); final long[] workSeconds={0L}; final long[] pauseSeconds={0L}; final long[] lastTimerMillis={System.currentTimeMillis()}; final short[] activeWorkStatus={(short)0}; final boolean[] workStartCaptured={false}; final String[] workStartTime={"00:00:00"}; final String[] workEndTime={"00:00:00"}; final ZES_opcUaWorkItem[] selectedWorkItem={ZES_emptyWorkItem()};
+        ScheduledExecutorService sch= Executors.newSingleThreadScheduledExecutor(); final short[] cur={1}; final short[] totalPages={1}; final String[] lastIct={""}; final String[] lastValidIct={""}; final boolean[] lastEnter={false}; final List<ZES_opcUaWorkItem>[] cachedItems=new List[]{List.of()}; final Map<Short, List<ZES_opcUaWorkItem>> pageCache=new HashMap<>(); final long[] workSeconds={0L}; final long[] pauseSeconds={0L}; final long[] lastTimerMillis={System.currentTimeMillis()}; final short[] activeWorkStatus={(short)0}; final boolean[] workStartCaptured={false}; final String[] workStartTime={"0000-00-00 00:00:00"}; final String[] workEndTime={"0000-00-00 00:00:00"}; final ZES_opcUaWorkItem[] selectedWorkItem={ZES_emptyWorkItem()};
         sch.scheduleAtFixedRate(()->{
             long timerNow=System.currentTimeMillis();
             short workStatusNow=ZES_readInt16Safe(workStatus);
@@ -137,8 +137,8 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
                             +", companyCode="+workEndItem.company_code()
                             +", tagCompanyCode="+companyCode.getValue().getValue().getValue()
                             +", tagWorkOrderCodeDetail="+workOrderCodeDetail.getValue().getValue().getValue());
-                    workStartTime[0]="00:00:00";
-                    workEndTime[0]="00:00:00";
+                    workStartTime[0]="0000-00-00 00:00:00";
+                    workEndTime[0]="0000-00-00 00:00:00";
                     workSeconds[0]=0L;
                     pauseSeconds[0]=0L;
                     workStartCaptured[0]=false;
@@ -146,7 +146,7 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
                     pauseTime.setValue(new DataValue(new Variant("00:00:00")));
                     workStatus.setValue(new DataValue(new Variant((short)0)));
                     workStatusNow=0;
-                    System.out.println("[OPC-UA][WORK-END-DEBUG] workStartTime, workEndTime, workTime, pauseTime reset to 00:00:00, workStatus reset to 0 after work end debug log");
+                    System.out.println("[OPC-UA][WORK-END-DEBUG] workStartTime and workEndTime reset to 0000-00-00 00:00:00, workTime and pauseTime reset to 00:00:00, workStatus reset to 0 after work end debug log");
                 }
                 activeWorkStatus[0]=workStatusNow;
                 lastTimerMillis[0]=timerNow;
@@ -261,7 +261,7 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
 
     private String ZES_formatCurrentTime()
     {
-        return java.time.LocalTime.now().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm:ss"));
+        return java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
     }
 
     private short ZES_readInt16Safe(UaVariableNode node)
