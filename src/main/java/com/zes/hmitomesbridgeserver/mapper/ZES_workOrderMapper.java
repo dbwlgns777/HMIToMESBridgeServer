@@ -142,7 +142,7 @@ public interface ZES_workOrderMapper
                    coalesce(pt.process_name, '') as process_row,
                    f.facility_name, f.facility_code, f.company_code,
                    pd.process_defect_code, pd.process_defect_name,
-                   w.deadline, w.target_production
+                   w.work_order_code, w.deadline, w.target_production
             from ZES_Authentication.zes_facility_info f
             join ZES_Authentication.pms_monitoring_info m
               on FIND_IN_SET(f.facility_code, m.facility_code) > 0

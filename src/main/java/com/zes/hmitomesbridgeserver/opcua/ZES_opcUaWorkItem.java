@@ -5,6 +5,7 @@ public record ZES_opcUaWorkItem(
         String product_name,
         String serial_code,
         String process_row,
+        String work_order_code,
         String deadline,
         String target_goal,
         String facility_name,
