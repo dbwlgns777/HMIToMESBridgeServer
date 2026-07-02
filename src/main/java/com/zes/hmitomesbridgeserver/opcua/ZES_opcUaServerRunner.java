@@ -1,5 +1,7 @@
 package com.zes.hmitomesbridgeserver.opcua;
 
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONObject;
 import org.eclipse.milo.opcua.sdk.core.AccessLevel;
 import org.eclipse.milo.opcua.sdk.core.Reference;
 import org.eclipse.milo.opcua.sdk.server.OpcUaServer;
@@ -143,6 +145,25 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
                             +", goodQuantity="+goodQuantity.getValue().getValue().getValue()
                             +", totalDefectiveQuantity="+totalDefectiveQuantity.getValue().getValue().getValue()
                             +", totalPauseTime="+totalPauseTime.getValue().getValue().getValue());
+                    JSONObject workEndPayload=new JSONObject();
+                    workEndPayload.put("companyCode", companyCode.getValue().getValue().getValue());
+                    workEndPayload.put("workOrderCode", workOrderCodeDetail.getValue().getValue().getValue());
+                    workEndPayload.put("worker", "Company");
+                    workEndPayload.put("workStartTime", workStartTime[0]);
+                    workEndPayload.put("workEndTime", workEndTime[0]);
+                    workEndPayload.put("goodQuantity", goodQuantity.getValue().getValue().getValue());
+                    workEndPayload.put("totalDefectiveQuantity", totalDefectiveQuantity.getValue().getValue().getValue());
+                    workEndPayload.put("frequentlyInspectionCode", "");
+                    workEndPayload.put("facilityCode", facilityCode.getValue().getValue().getValue());
+                    workEndPayload.put("totalPauseTime", pauseTime.getValue().getValue().getValue());
+                    JSONArray defectInfo=new JSONArray();
+                    JSONObject defectItem=new JSONObject();
+                    defectItem.put("processDefectName", processDefectName.getValue().getValue().getValue());
+                    defectItem.put("defectQuantity", totalDefectiveQuantity.getValue().getValue().getValue());
+                    defectItem.put("processDefectCode", processDefectCode.getValue().getValue().getValue());
+                    defectInfo.add(defectItem);
+                    workEndPayload.put("defectInfo", defectInfo);
+                    System.out.println("[OPC-UA][WORK-END-PAYLOAD] "+workEndPayload.toJSONString());
                     workStartTime[0]="0000-00-00 00:00:00";
                     workEndTime[0]="0000-00-00 00:00:00";
                     workSeconds[0]=0L;
