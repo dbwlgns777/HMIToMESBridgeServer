@@ -138,10 +138,11 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
                             +", tagCompanyCode="+companyCode.getValue().getValue().getValue()
                             +", tagWorkOrderCodeDetail="+workOrderCodeDetail.getValue().getValue().getValue());
                     workStartTime[0]="00:00:00";
+                    workEndTime[0]="00:00:00";
                     workStartCaptured[0]=false;
                     workStatus.setValue(new DataValue(new Variant((short)0)));
                     workStatusNow=0;
-                    System.out.println("[OPC-UA][WORK-END-DEBUG] workStartTime reset to 00:00:00 and workStatus reset to 0 after work end debug log");
+                    System.out.println("[OPC-UA][WORK-END-DEBUG] workStartTime and workEndTime reset to 00:00:00, workStatus reset to 0 after work end debug log");
                 }
                 activeWorkStatus[0]=workStatusNow;
                 lastTimerMillis[0]=timerNow;
