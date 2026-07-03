@@ -25,6 +25,12 @@ import org.springframework.boot.ApplicationRunner;
 import org.springframework.stereotype.Component;
 
 import java.lang.reflect.Method;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -43,6 +49,8 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
     private static final int ENDPOINT_PORT = 8624;
     private static final String ENDPOINT_PATH = "/lsexp2-test";
     private static final String ROOT_ENDPOINT_PATH = "/";
+    private static final String WORK_HISTORY_REGISTER_URL = "http://localhost:5500/api/v1/workHistory/kiosk/register";
+    private static final HttpClient WORK_HISTORY_HTTP_CLIENT = HttpClient.newHttpClient();
 
     private final ZES_opcUaWorkItemProvider ZES_gv_workItemProvider;
     public ZES_opcUaServerRunner(ZES_opcUaWorkItemProvider p){this.ZES_gv_workItemProvider=p;}
@@ -145,27 +153,20 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
                             +", goodQuantity="+goodQuantity.getValue().getValue().getValue()
                             +", totalDefectiveQuantity="+totalDefectiveQuantity.getValue().getValue().getValue()
                             +", totalPauseTime="+totalPauseTime.getValue().getValue().getValue());
-                    JSONObject workEndPayload=new JSONObject(true);
-                    workEndPayload.put("companyCode", String.valueOf(companyCode.getValue().getValue().getValue()));
-                    JSONArray facilityCodeArray=new JSONArray();
-                    facilityCodeArray.add(String.valueOf(facilityCode.getValue().getValue().getValue()));
-                    workEndPayload.put("facilityCode", facilityCodeArray);
-                    workEndPayload.put("goodQuantity", String.valueOf(goodQuantity.getValue().getValue().getValue()));
-                    workEndPayload.put("frequentlyInspectionCode", "");
-                    workEndPayload.put("workOrderCode", String.valueOf(workOrderCodeDetail.getValue().getValue().getValue()));
-                    workEndPayload.put("totalDefectiveQuantity", String.valueOf(totalDefectiveQuantity.getValue().getValue().getValue()));
-                    workEndPayload.put("worker", "Company");
-                    workEndPayload.put("totalPauseTime", String.valueOf(pauseTime.getValue().getValue().getValue()));
-                    workEndPayload.put("workEndTime", workEndTime[0]);
-                    JSONArray defectInfo=new JSONArray();
-                    JSONObject defectItem=new JSONObject(true);
-                    defectItem.put("processDefectName", String.valueOf(processDefectName.getValue().getValue().getValue()));
-                    defectItem.put("processDefectCode", String.valueOf(processDefectCode.getValue().getValue().getValue()));
-                    defectItem.put("defectQuantity", String.valueOf(totalDefectiveQuantity.getValue().getValue().getValue()));
-                    defectInfo.add(defectItem);
-                    workEndPayload.put("defectInfo", defectInfo);
-                    workEndPayload.put("workStartTime", workStartTime[0]);
+                    JSONObject workEndPayload=ZES_buildWorkEndPayload(
+                            companyCode,
+                            facilityCode,
+                            goodQuantity,
+                            workOrderCodeDetail,
+                            totalDefectiveQuantity,
+                            pauseTime,
+                            processDefectName,
+                            processDefectCode,
+                            workStartTime[0],
+                            workEndTime[0]
+                    );
                     System.out.println("[OPC-UA][WORK-END-PAYLOAD] "+workEndPayload.toJSONString());
+                    ZES_sendWorkEndPayload(workEndPayload);
                     workStartTime[0]="0000-00-00 00:00:00";
                     workEndTime[0]="0000-00-00 00:00:00";
                     workSeconds[0]=0L;
@@ -274,6 +275,75 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
         Runtime.getRuntime().addShutdownHook(new Thread(sch::shutdownNow));
     }
 
+
+    private JSONObject ZES_buildWorkEndPayload(
+            UaVariableNode companyCode,
+            UaVariableNode facilityCode,
+            UaVariableNode goodQuantity,
+            UaVariableNode workOrderCodeDetail,
+            UaVariableNode totalDefectiveQuantity,
+            UaVariableNode pauseTime,
+            UaVariableNode processDefectName,
+            UaVariableNode processDefectCode,
+            String workStartTime,
+            String workEndTime
+    )
+    {
+        String ZES_lv_totalDefectiveQuantity = ZES_readNodeValueAsString(totalDefectiveQuantity);
+        JSONObject workEndPayload=new JSONObject(true);
+        workEndPayload.put("companyCode", ZES_readNodeValueAsString(companyCode));
+
+        JSONArray facilityCodeArray=new JSONArray();
+        facilityCodeArray.add(ZES_readNodeValueAsString(facilityCode));
+        workEndPayload.put("facilityCode", facilityCodeArray);
+
+        workEndPayload.put("goodQuantity", ZES_readNodeValueAsString(goodQuantity));
+        workEndPayload.put("frequentlyInspectionCode", "");
+        workEndPayload.put("workOrderCode", ZES_readNodeValueAsString(workOrderCodeDetail));
+        workEndPayload.put("totalDefectiveQuantity", ZES_lv_totalDefectiveQuantity);
+        workEndPayload.put("worker", "Company");
+        workEndPayload.put("totalPauseTime", ZES_readNodeValueAsString(pauseTime));
+        workEndPayload.put("workEndTime", workEndTime);
+
+        JSONArray defectInfo=new JSONArray();
+        JSONObject defectItem=new JSONObject(true);
+        defectItem.put("processDefectName", ZES_readNodeValueAsString(processDefectName));
+        defectItem.put("processDefectCode", ZES_readNodeValueAsString(processDefectCode));
+        defectItem.put("defectQuantity", ZES_lv_totalDefectiveQuantity);
+        defectInfo.add(defectItem);
+        workEndPayload.put("defectInfo", defectInfo);
+        workEndPayload.put("workStartTime", workStartTime);
+        return workEndPayload;
+    }
+
+    private void ZES_sendWorkEndPayload(JSONObject workEndPayload)
+    {
+        String ZES_lv_body = workEndPayload.toJSONString();
+        try {
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(WORK_HISTORY_REGISTER_URL))
+                    .timeout(Duration.ofSeconds(5))
+                    .header("Content-Type", "application/json; charset=UTF-8")
+                    .header("Accept", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(ZES_lv_body, StandardCharsets.UTF_8))
+                    .build();
+            HttpResponse<String> response = WORK_HISTORY_HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+            if(response.statusCode() >= 200 && response.statusCode() < 300){
+                System.out.println("[OPC-UA][WORK-END-API] success url="+WORK_HISTORY_REGISTER_URL+", status="+response.statusCode()+", body="+response.body());
+            } else {
+                System.out.println("[OPC-UA][WORK-END-API][FAIL] url="+WORK_HISTORY_REGISTER_URL+", status="+response.statusCode()+", requestBody="+ZES_lv_body+", responseBody="+response.body());
+            }
+        } catch (Exception e) {
+            System.out.println("[OPC-UA][WORK-END-API][ERROR] url="+WORK_HISTORY_REGISTER_URL+", requestBody="+ZES_lv_body+", message="+e.getMessage());
+        }
+    }
+
+    private String ZES_readNodeValueAsString(UaVariableNode node)
+    {
+        if(node == null || node.getValue() == null || node.getValue().getValue() == null) return "";
+        Object raw = node.getValue().getValue().getValue();
+        return raw == null ? "" : String.valueOf(raw);
+    }
 
     private ZES_opcUaWorkItem ZES_emptyWorkItem()
     {
