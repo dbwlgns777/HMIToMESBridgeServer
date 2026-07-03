@@ -333,8 +333,21 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
             } else {
                 System.out.println("[OPC-UA][WORK-END-API][FAIL] url="+WORK_HISTORY_REGISTER_URL+", status="+response.statusCode()+", requestBody="+ZES_lv_body+", responseBody="+response.body());
             }
+            ZES_debugWorkEndApiReturn(response.body());
         } catch (Exception e) {
             System.out.println("[OPC-UA][WORK-END-API][ERROR] url="+WORK_HISTORY_REGISTER_URL+", requestBody="+ZES_lv_body+", message="+e.getMessage());
+        }
+    }
+
+    private void ZES_debugWorkEndApiReturn(String responseBody)
+    {
+        // TEST DEBUG: workHistory register API return 확인 후 운영 반영 시 아래 로그 메서드 호출/메서드를 삭제해도 됩니다.
+        try {
+            JSONObject ZES_lv_response = JSONObject.parseObject(responseBody);
+            Object ZES_lv_code = ZES_lv_response.containsKey("code") ? ZES_lv_response.get("code") : ZES_lv_response.get("status");
+            System.out.println("[OPC-UA][WORK-END-API][RETURN-DEBUG] codeOrStatus="+ZES_lv_code+", message="+ZES_lv_response.get("message")+", data="+ZES_lv_response.get("data"));
+        } catch (Exception e) {
+            System.out.println("[OPC-UA][WORK-END-API][RETURN-DEBUG] nonJsonBody="+responseBody+", parseMessage="+e.getMessage());
         }
     }
 
