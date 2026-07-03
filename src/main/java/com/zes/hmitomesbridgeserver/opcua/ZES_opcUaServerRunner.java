@@ -50,6 +50,7 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
     private static final String ENDPOINT_PATH = "/lsexp2-test";
     private static final String ROOT_ENDPOINT_PATH = "/";
     private static final String WORK_HISTORY_REGISTER_URL = "http://localhost:5500/api/v1/workHistory/kiosk/register";
+    private static final String WORK_HISTORY_UPDATE_URL = "http://localhost:5500/api/v1/workHistory/kiosk/update";
     private static final HttpClient WORK_HISTORY_HTTP_CLIENT = HttpClient.newHttpClient();
 
     private final ZES_opcUaWorkItemProvider ZES_gv_workItemProvider;
@@ -166,7 +167,19 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
                             workEndTime[0]
                     );
                     System.out.println("[OPC-UA][WORK-END-PAYLOAD] "+workEndPayload.toJSONString());
-                    ZES_sendWorkEndPayload(workEndPayload);
+                    JSONObject workEndResponse=ZES_sendWorkHistoryPayload(WORK_HISTORY_REGISTER_URL, "REGISTER", workEndPayload);
+                    ZES_sendWorkHistoryUpdateIfRegisterSuccess(
+                            workEndResponse,
+                            companyCode,
+                            goodQuantity,
+                            totalDefectiveQuantity,
+                            facilityCode,
+                            processDefectName,
+                            processDefectCode,
+                            pauseTime,
+                            workStartTime[0],
+                            workEndTime[0]
+                    );
                     workStartTime[0]="0000-00-00 00:00:00";
                     workEndTime[0]="0000-00-00 00:00:00";
                     workSeconds[0]=0L;
@@ -316,12 +329,12 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
         return workEndPayload;
     }
 
-    private void ZES_sendWorkEndPayload(JSONObject workEndPayload)
+    private JSONObject ZES_sendWorkHistoryPayload(String url, String apiName, JSONObject payload)
     {
-        String ZES_lv_body = workEndPayload.toJSONString();
+        String ZES_lv_body = payload.toJSONString();
         try {
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(WORK_HISTORY_REGISTER_URL))
+                    .uri(URI.create(url))
                     .timeout(Duration.ofSeconds(5))
                     .header("Content-Type", "application/json; charset=UTF-8")
                     .header("Accept", "application/json")
@@ -329,26 +342,125 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
                     .build();
             HttpResponse<String> response = WORK_HISTORY_HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
             if(response.statusCode() >= 200 && response.statusCode() < 300){
-                System.out.println("[OPC-UA][WORK-END-API] success url="+WORK_HISTORY_REGISTER_URL+", status="+response.statusCode()+", body="+response.body());
+                System.out.println("[OPC-UA][WORK-HISTORY-"+apiName+"-API] success url="+url+", status="+response.statusCode()+", body="+response.body());
             } else {
-                System.out.println("[OPC-UA][WORK-END-API][FAIL] url="+WORK_HISTORY_REGISTER_URL+", status="+response.statusCode()+", requestBody="+ZES_lv_body+", responseBody="+response.body());
+                System.out.println("[OPC-UA][WORK-HISTORY-"+apiName+"-API][FAIL] url="+url+", status="+response.statusCode()+", requestBody="+ZES_lv_body+", responseBody="+response.body());
             }
-            ZES_debugWorkEndApiReturn(response.body());
+            return ZES_debugWorkHistoryApiReturn(apiName, response.body());
         } catch (Exception e) {
-            System.out.println("[OPC-UA][WORK-END-API][ERROR] url="+WORK_HISTORY_REGISTER_URL+", requestBody="+ZES_lv_body+", message="+e.getMessage());
+            System.out.println("[OPC-UA][WORK-HISTORY-"+apiName+"-API][ERROR] url="+url+", requestBody="+ZES_lv_body+", message="+e.getMessage());
+            return null;
         }
     }
 
-    private void ZES_debugWorkEndApiReturn(String responseBody)
+    private void ZES_sendWorkHistoryUpdateIfRegisterSuccess(
+            JSONObject registerResponse,
+            UaVariableNode companyCode,
+            UaVariableNode goodQuantity,
+            UaVariableNode totalDefectiveQuantity,
+            UaVariableNode facilityCode,
+            UaVariableNode processDefectName,
+            UaVariableNode processDefectCode,
+            UaVariableNode pauseTime,
+            String workStartTime,
+            String workEndTime
+    )
     {
-        // TEST DEBUG: workHistory register API return 확인 후 운영 반영 시 아래 로그 메서드 호출/메서드를 삭제해도 됩니다.
+        if(registerResponse == null){
+            System.out.println("[OPC-UA][WORK-HISTORY-UPDATE-SKIP] register response is null");
+            return;
+        }
+        String ZES_lv_message = ZES_readJsonValueAsString(registerResponse.get("message"));
+        if(!"success".equalsIgnoreCase(ZES_lv_message)){
+            System.out.println("[OPC-UA][WORK-HISTORY-UPDATE-SKIP] register message="+ZES_lv_message);
+            return;
+        }
+
+        JSONObject ZES_lv_data = ZES_toJsonObject(registerResponse.get("data"));
+        String ZES_lv_workHistoryCode = ZES_lv_data == null ? "" : ZES_readJsonValueAsString(ZES_lv_data.get("workHistoryCode"));
+        if(ZES_lv_workHistoryCode.isEmpty()){
+            System.out.println("[OPC-UA][WORK-HISTORY-UPDATE-SKIP] workHistoryCode is empty, data="+registerResponse.get("data"));
+            return;
+        }
+
+        JSONObject updatePayload = ZES_buildWorkHistoryUpdatePayload(
+                ZES_lv_workHistoryCode,
+                companyCode,
+                goodQuantity,
+                totalDefectiveQuantity,
+                facilityCode,
+                processDefectName,
+                processDefectCode,
+                pauseTime,
+                workStartTime,
+                workEndTime
+        );
+        System.out.println("[OPC-UA][WORK-HISTORY-UPDATE-PAYLOAD] "+updatePayload.toJSONString());
+        ZES_sendWorkHistoryPayload(WORK_HISTORY_UPDATE_URL, "UPDATE", updatePayload);
+    }
+
+    private JSONObject ZES_buildWorkHistoryUpdatePayload(
+            String workHistoryCode,
+            UaVariableNode companyCode,
+            UaVariableNode goodQuantity,
+            UaVariableNode totalDefectiveQuantity,
+            UaVariableNode facilityCode,
+            UaVariableNode processDefectName,
+            UaVariableNode processDefectCode,
+            UaVariableNode pauseTime,
+            String workStartTime,
+            String workEndTime
+    )
+    {
+        String ZES_lv_totalDefectiveQuantity = ZES_readNodeValueAsString(totalDefectiveQuantity);
+        JSONObject updatePayload = new JSONObject(true);
+        updatePayload.put("workHistoryCode", workHistoryCode);
+        updatePayload.put("companyCode", ZES_readNodeValueAsString(companyCode));
+        updatePayload.put("workStartTime", workStartTime);
+        updatePayload.put("workEndTime", workEndTime);
+        updatePayload.put("totalCount", ZES_readNodeValueAsString(goodQuantity));
+        updatePayload.put("totalDefectiveQuantity", ZES_lv_totalDefectiveQuantity);
+        updatePayload.put("frequentlyInspectionCode", "");
+        updatePayload.put("facilityCode", ZES_readNodeValueAsString(facilityCode));
+
+        JSONArray defectInfo = new JSONArray();
+        JSONObject defectItem = new JSONObject(true);
+        defectItem.put("processDefectName", ZES_readNodeValueAsString(processDefectName));
+        defectItem.put("defectQuantity", ZES_lv_totalDefectiveQuantity);
+        defectItem.put("processDefectCode", ZES_readNodeValueAsString(processDefectCode));
+        defectInfo.add(defectItem);
+        updatePayload.put("defectInfo", defectInfo);
+
+        updatePayload.put("totalPauseTime", ZES_readNodeValueAsString(pauseTime));
+        updatePayload.put("pauseStartTime", null);
+        updatePayload.put("bomInfo", new JSONArray());
+        return updatePayload;
+    }
+
+    private JSONObject ZES_debugWorkHistoryApiReturn(String apiName, String responseBody)
+    {
+        // TEST DEBUG: workHistory API return 확인 후 운영 반영 시 아래 로그 메서드 호출/메서드를 삭제해도 됩니다.
         try {
             JSONObject ZES_lv_response = JSONObject.parseObject(responseBody);
             Object ZES_lv_code = ZES_lv_response.containsKey("code") ? ZES_lv_response.get("code") : ZES_lv_response.get("status");
-            System.out.println("[OPC-UA][WORK-END-API][RETURN-DEBUG] codeOrStatus="+ZES_lv_code+", message="+ZES_lv_response.get("message")+", data="+ZES_lv_response.get("data"));
+            System.out.println("[OPC-UA][WORK-HISTORY-"+apiName+"-API][RETURN-DEBUG] codeOrStatus="+ZES_lv_code+", message="+ZES_lv_response.get("message")+", data="+ZES_lv_response.get("data"));
+            return ZES_lv_response;
         } catch (Exception e) {
-            System.out.println("[OPC-UA][WORK-END-API][RETURN-DEBUG] nonJsonBody="+responseBody+", parseMessage="+e.getMessage());
+            System.out.println("[OPC-UA][WORK-HISTORY-"+apiName+"-API][RETURN-DEBUG] nonJsonBody="+responseBody+", parseMessage="+e.getMessage());
+            return null;
         }
+    }
+
+    private JSONObject ZES_toJsonObject(Object value)
+    {
+        if(value instanceof JSONObject jsonObject) return jsonObject;
+        if(value == null) return null;
+        try { return JSONObject.parseObject(String.valueOf(value)); } catch (Exception e) { return null; }
+    }
+
+    private String ZES_readJsonValueAsString(Object value)
+    {
+        return value == null ? "" : String.valueOf(value);
     }
 
     private String ZES_readNodeValueAsString(UaVariableNode node)
