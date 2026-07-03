@@ -396,7 +396,19 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
                 workEndTime
         );
         System.out.println("[OPC-UA][WORK-HISTORY-UPDATE-PAYLOAD] "+updatePayload.toJSONString());
-        ZES_sendWorkHistoryPayload(WORK_HISTORY_UPDATE_URL, "UPDATE", updatePayload);
+        JSONObject updateResponse = ZES_sendWorkHistoryPayload(WORK_HISTORY_UPDATE_URL, "UPDATE", updatePayload);
+        ZES_debugWorkHistoryUpdateResponse(updateResponse);
+    }
+
+    private void ZES_debugWorkHistoryUpdateResponse(JSONObject updateResponse)
+    {
+        // TEST DEBUG: workHistory update API response 확인 후 테스트 완료 시 이 메서드 호출/메서드를 삭제해도 됩니다.
+        if(updateResponse == null){
+            System.out.println("[OPC-UA][WORK-HISTORY-UPDATE-RESPONSE-DEBUG] update response is null");
+            return;
+        }
+        Object ZES_lv_code = updateResponse.containsKey("code") ? updateResponse.get("code") : updateResponse.get("status");
+        System.out.println("[OPC-UA][WORK-HISTORY-UPDATE-RESPONSE-DEBUG] codeOrStatus="+ZES_lv_code+", message="+updateResponse.get("message")+", data="+updateResponse.get("data")+", raw="+updateResponse.toJSONString());
     }
 
     private JSONObject ZES_buildWorkHistoryUpdatePayload(
