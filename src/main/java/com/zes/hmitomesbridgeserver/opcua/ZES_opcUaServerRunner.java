@@ -433,7 +433,9 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
         updatePayload.put("totalCount", ZES_readNodeValueAsString(goodQuantity));
         updatePayload.put("totalDefectiveQuantity", ZES_lv_totalDefectiveQuantity);
         updatePayload.put("frequentlyInspectionCode", "");
-        updatePayload.put("facilityCode", ZES_readNodeValueAsString(facilityCode));
+        JSONArray facilityCodeArray = new JSONArray();
+        facilityCodeArray.add(ZES_readNodeValueAsString(facilityCode));
+        updatePayload.put("facilityCode", facilityCodeArray);
 
         JSONArray defectInfo = new JSONArray();
         JSONObject defectItem = new JSONObject(true);
