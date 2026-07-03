@@ -159,10 +159,7 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
                             facilityCode,
                             goodQuantity,
                             workOrderCodeDetail,
-                            totalDefectiveQuantity,
                             pauseTime,
-                            processDefectName,
-                            processDefectCode,
                             workStartTime[0],
                             workEndTime[0]
                     );
@@ -294,15 +291,11 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
             UaVariableNode facilityCode,
             UaVariableNode goodQuantity,
             UaVariableNode workOrderCodeDetail,
-            UaVariableNode totalDefectiveQuantity,
             UaVariableNode pauseTime,
-            UaVariableNode processDefectName,
-            UaVariableNode processDefectCode,
             String workStartTime,
             String workEndTime
     )
     {
-        String ZES_lv_totalDefectiveQuantity = ZES_readNodeValueAsString(totalDefectiveQuantity);
         JSONObject workEndPayload=new JSONObject(true);
         workEndPayload.put("companyCode", ZES_readNodeValueAsString(companyCode));
 
@@ -313,18 +306,12 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
         workEndPayload.put("goodQuantity", ZES_readNodeValueAsString(goodQuantity));
         workEndPayload.put("frequentlyInspectionCode", "");
         workEndPayload.put("workOrderCode", ZES_readNodeValueAsString(workOrderCodeDetail));
-        workEndPayload.put("totalDefectiveQuantity", ZES_lv_totalDefectiveQuantity);
+        workEndPayload.put("totalDefectiveQuantity", "0");
         workEndPayload.put("worker", "Company");
         workEndPayload.put("totalPauseTime", ZES_readNodeValueAsString(pauseTime));
         workEndPayload.put("workEndTime", workEndTime);
 
-        JSONArray defectInfo=new JSONArray();
-        JSONObject defectItem=new JSONObject(true);
-        defectItem.put("processDefectName", ZES_readNodeValueAsString(processDefectName));
-        defectItem.put("processDefectCode", ZES_readNodeValueAsString(processDefectCode));
-        defectItem.put("defectQuantity", ZES_lv_totalDefectiveQuantity);
-        defectInfo.add(defectItem);
-        workEndPayload.put("defectInfo", defectInfo);
+        workEndPayload.put("defectInfo", new JSONArray());
         workEndPayload.put("workStartTime", workStartTime);
         return workEndPayload;
     }
