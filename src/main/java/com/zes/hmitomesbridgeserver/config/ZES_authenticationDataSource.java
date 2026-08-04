@@ -24,6 +24,8 @@ import javax.sql.DataSource;
 )
 public class ZES_authenticationDataSource
 {
+    private static final String MYSQL_DRIVER_CLASS_NAME = "com.mysql.cj.jdbc.Driver";
+
     @Primary
     @Bean(name = "dataSource")
     public DataSource dataSource()
@@ -31,6 +33,7 @@ public class ZES_authenticationDataSource
         try
         {
             HikariConfig config = new HikariConfig("db_config/mysql.config");
+            config.setDriverClassName(MYSQL_DRIVER_CLASS_NAME);
             return new HikariDataSource(config);
         }
         catch (Exception e)
