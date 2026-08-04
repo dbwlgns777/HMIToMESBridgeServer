@@ -39,13 +39,5 @@ public class ZES_workOrderKioskController
         return ZES_gv_workOrderKioskService.ZES_resolveMonitoringTypeCodesByIctNumber(ictNumber);
     }
 
-    @Operation(summary = "ICT 번호로 작업지시 목록 조회", description = "ict_number -> facility -> monitoring process code -> 작업지시목록")
-    @GetMapping("/active-work-orders/by-ict-number")
-    public JSONObject ZES_kioskActiveWorkOrderListByIctNumber(@RequestParam @Min(1) Integer page,
-                                                              @RequestParam @Min(1) Integer size,
-                                                              @RequestParam @NotBlank String ictNumber)
-    {
-        return ZES_gv_workOrderKioskService.ZES_kioskActiveWorkOrderListByIctNumber(page, size, ictNumber);
-    }
 
 }
