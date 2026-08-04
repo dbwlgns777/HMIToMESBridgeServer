@@ -117,8 +117,9 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
             processCode[i]=roString(ctx,ns,"LS_EXP2/row"+r+"/process_code","process_code_row"+r,""); workOrderCode[i]=roString(ctx,ns,"LS_EXP2/row"+r+"/workOrderCode","workOrderCode_row"+r,"");
             add(nm,server,root,serial[i]);add(nm,server,root,pname[i]);add(nm,server,root,target[i]);add(nm,server,root,process[i]);add(nm,server,root,deadline[i]);add(nm,server,root,processCode[i]);add(nm,server,root,workOrderCode[i]);}
 
-        ScheduledExecutorService sch= Executors.newSingleThreadScheduledExecutor(); final short[] cur={1}; final short[] totalPages={1}; final String[] lastIct={""}; final String[] lastValidIct={""}; final boolean[] lastEnter={false}; final List<ZES_opcUaWorkItem>[] cachedItems=new List[]{List.of()}; final Map<Short, List<ZES_opcUaWorkItem>> pageCache=new HashMap<>(); final long[] workSeconds={0L}; final long[] pauseSeconds={0L}; final long[] lastTimerMillis={System.currentTimeMillis()}; final short[] activeWorkStatus={(short)0}; final boolean[] workStartCaptured={false}; final String[] workStartTime={"0000-00-00 00:00:00"}; final String[] workEndTime={"0000-00-00 00:00:00"}; final ZES_opcUaWorkItem[] selectedWorkItem={ZES_emptyWorkItem()};
+        ScheduledExecutorService sch= Executors.newSingleThreadScheduledExecutor(); final short[] cur={1}; final short[] totalPages={1}; final String[] lastIct={""}; final String[] lastValidIct={""}; final boolean[] lastEnter={false}; final boolean[] workItemsLoaded={false}; final List<ZES_opcUaWorkItem>[] cachedItems=new List[]{List.of()}; final Map<Short, List<ZES_opcUaWorkItem>> pageCache=new HashMap<>(); final long[] workSeconds={0L}; final long[] pauseSeconds={0L}; final long[] lastTimerMillis={System.currentTimeMillis()}; final short[] activeWorkStatus={(short)0}; final boolean[] workStartCaptured={false}; final String[] workStartTime={"0000-00-00 00:00:00"}; final String[] workEndTime={"0000-00-00 00:00:00"}; final ZES_opcUaWorkItem[] selectedWorkItem={ZES_emptyWorkItem()};
         sch.scheduleAtFixedRate(()->{
+            try {
             long timerNow=System.currentTimeMillis();
             short workStatusNow=ZES_readInt16Safe(workStatus);
             long elapsedSeconds=(timerNow-lastTimerMillis[0])/1000L;
@@ -214,7 +215,7 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
             }
             short requestManageNow=ZES_readInt16Safe(requestManage);
             boolean ictChanged=!queryIct.equals(lastIct[0]);
-            if(ictChanged){ lastIct[0]=queryIct; cur[0]=1; totalPages[0]=1; pageCache.clear(); cachedItems[0]=List.of(); page.setValue(new DataValue(new Variant((short)1))); }
+            if(ictChanged){ lastIct[0]=queryIct; cur[0]=1; totalPages[0]=1; workItemsLoaded[0]=false; pageCache.clear(); cachedItems[0]=List.of(); page.setValue(new DataValue(new Variant((short)1))); }
             if(enterEdge){ cur[0]=1; page.setValue(new DataValue(new Variant((short)1))); enter.setValue(new DataValue(new Variant(false))); }
             if(requestManageNow == 1){
                 cur[0]=1;
@@ -231,7 +232,13 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
                     totalPages[0]=(short)Math.max(1,(cachedItems[0].size()+WORK_ITEMS_PAGE_SIZE-1)/WORK_ITEMS_PAGE_SIZE);
                 }
                 requestManage.setValue(new DataValue(new Variant((short)0)));
+                workItemsLoaded[0]=true;
                 System.out.println("[OPC-UA][REQUEST-MANAGE] request_manage=1, selectedIctNumber="+queryIct+", fetchedItems="+cachedItems[0].size()+", request_manage reset to 0");
+            }
+
+            if(!workItemsLoaded[0]){
+                totalPage.setValue(new DataValue(new Variant((short)1)));
+                return;
             }
 
             short pages=USE_PAGED_DB_FETCH?totalPages[0]:(short)Math.max(1,(cachedItems[0].size()+WORK_ITEMS_PAGE_SIZE-1)/WORK_ITEMS_PAGE_SIZE); totalPage.setValue(new DataValue(new Variant(pages)));
@@ -281,6 +288,14 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
             System.out.println("[OPC-UA][WORKITEM-DETAIL-TAG] serialCodeDetail="+serialCodeDetail.getValue().getValue().getValue()+", productNameDetail="+productNameDetail.getValue().getValue().getValue()+", workOrderCodeDetail="+workOrderCodeDetail.getValue().getValue().getValue()+", processDetail="+processDetail.getValue().getValue().getValue()+", targetGoalDetail="+targetGoalDetail.getValue().getValue().getValue());
 
             System.out.println("[OPC-UA] polling cycle running... ict="+queryIct+", page="+req+"/"+pages+", selectedRow="+sel);
+            } catch (Exception e) {
+                System.out.println("[OPC-UA][POLLING-ERROR] polling cycle failed but scheduler will continue: "+e.getMessage());
+                e.printStackTrace(System.out);
+                if(ZES_readInt16Safe(requestManage) == 1){
+                    requestManage.setValue(new DataValue(new Variant((short)0)));
+                    System.out.println("[OPC-UA][POLLING-ERROR] request_manage reset to 0 after failed DB request");
+                }
+            }
         },0,500, TimeUnit.MILLISECONDS);
         Runtime.getRuntime().addShutdownHook(new Thread(sch::shutdownNow));
     }
@@ -511,7 +526,7 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
     {
         if (raw == null) return "";
         String v = raw.replace("\u0000", "").trim();
-        if (v.isEmpty()) return "";
+        if (v.isEmpty() || "0".equals(v)) return "";
         if (!v.matches("[A-Za-z0-9_-]+")) {
             System.out.println("[OPC-UA][ICT-TAG] invalid ict_number format from HMI: '" + v + "'");
             return "";
