@@ -27,7 +27,6 @@ import org.springframework.stereotype.Component;
 
 import java.lang.reflect.Method;
 import java.net.URI;
-import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -53,7 +52,7 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
     private static final String ROOT_ENDPOINT_PATH = "/";
     private static final String WORK_HISTORY_REGISTER_URL = "https://api.z-fas.com:5500/api/v1/workHistory/kiosk/register";
     private static final String WORK_HISTORY_UPDATE_URL = "https://api.z-fas.com:5500/api/v1/workHistory/kiosk/update";
-    private static final String WORK_HISTORY_INPUT_MATERIAL_LIST_URL_PREFIX = "https://api.z-fas.com:5500/api/v1/workHistory/inputMaterial/list/";
+    private static final String WORK_HISTORY_INPUT_MATERIAL_LOT_AUTO_PROCESS_URL = "https://api.z-fas.com:5500/api/v1/workHistory/inputMaterial/lot/auto/process";
     private static final HttpClient WORK_HISTORY_HTTP_CLIENT = HttpClient.newHttpClient();
 
     private final ZES_opcUaWorkItemProvider ZES_gv_workItemProvider;
@@ -178,6 +177,7 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
                             processDefectName,
                             processDefectCode,
                             pauseTime,
+                            workEndItem.product_code(),
                             workStartTime[0],
                             workEndTime[0]
                     );
@@ -367,6 +367,7 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
             UaVariableNode processDefectName,
             UaVariableNode processDefectCode,
             UaVariableNode pauseTime,
+            String productCode,
             String workStartTime,
             String workEndTime
     )
@@ -388,7 +389,7 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
             return;
         }
 
-        JSONArray ZES_lv_bomInfo = ZES_getWorkHistoryInputMaterialList(ZES_lv_workHistoryCode);
+        Object ZES_lv_bomInfo = ZES_getWorkHistoryInputMaterialLotAutoProcess(productCode, goodQuantity);
         JSONObject updatePayload = ZES_buildWorkHistoryUpdatePayload(
                 ZES_lv_workHistoryCode,
                 ZES_lv_bomInfo,
@@ -420,7 +421,7 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
 
     private JSONObject ZES_buildWorkHistoryUpdatePayload(
             String workHistoryCode,
-            JSONArray bomInfo,
+            Object bomInfo,
             UaVariableNode companyCode,
             UaVariableNode goodQuantity,
             UaVariableNode totalDefectiveQuantity,
@@ -455,60 +456,64 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
 
         updatePayload.put("totalPauseTime", ZES_readNodeValueAsString(pauseTime));
         updatePayload.put("pauseStartTime", null);
-        updatePayload.put("bomInfo", bomInfo == null ? new JSONArray() : bomInfo);
+        updatePayload.put("BOMInfo", bomInfo == null ? new JSONArray() : bomInfo);
         return updatePayload;
     }
 
-    private JSONArray ZES_getWorkHistoryInputMaterialList(String workHistoryCode)
+    private Object ZES_getWorkHistoryInputMaterialLotAutoProcess(String productCode, UaVariableNode goodQuantity)
     {
-        if(workHistoryCode == null || workHistoryCode.isBlank()){
-            System.out.println("[OPC-UA][WORK-HISTORY-INPUT-MATERIAL-SKIP] workHistoryCode is empty");
+        String ZES_lv_productCode = productCode == null ? "" : productCode.trim();
+        String ZES_lv_output = ZES_readNodeValueAsString(goodQuantity);
+        if(ZES_lv_productCode.isEmpty()){
+            System.out.println("[OPC-UA][WORK-HISTORY-INPUT-MATERIAL-SKIP] productCode is empty");
             return new JSONArray();
         }
-        String encodedWorkHistoryCode = URLEncoder.encode(workHistoryCode, StandardCharsets.UTF_8);
-        String url = WORK_HISTORY_INPUT_MATERIAL_LIST_URL_PREFIX + encodedWorkHistoryCode;
+
+        JSONObject requestBody = new JSONObject(true);
+        requestBody.put("productCode", ZES_lv_productCode);
+        requestBody.put("output", ZES_lv_output);
+        String ZES_lv_body = requestBody.toJSONString();
+
         try {
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(url))
+                    .uri(URI.create(WORK_HISTORY_INPUT_MATERIAL_LOT_AUTO_PROCESS_URL))
                     .timeout(Duration.ofSeconds(5))
+                    .header("Content-Type", "application/json; charset=UTF-8")
                     .header("Accept", "application/json")
-                    .GET()
+                    .POST(HttpRequest.BodyPublishers.ofString(ZES_lv_body, StandardCharsets.UTF_8))
                     .build();
             HttpResponse<String> response = WORK_HISTORY_HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
             if(response.statusCode() >= 200 && response.statusCode() < 300){
-                System.out.println("[OPC-UA][WORK-HISTORY-INPUT-MATERIAL-API] success url="+url+", status="+response.statusCode()+", body="+response.body());
+                System.out.println("[OPC-UA][WORK-HISTORY-INPUT-MATERIAL-AUTO-PROCESS-API] success url="+WORK_HISTORY_INPUT_MATERIAL_LOT_AUTO_PROCESS_URL+", status="+response.statusCode()+", requestBody="+ZES_lv_body+", body="+response.body());
             } else {
-                System.out.println("[OPC-UA][WORK-HISTORY-INPUT-MATERIAL-API][FAIL] url="+url+", status="+response.statusCode()+", responseBody="+response.body());
+                System.out.println("[OPC-UA][WORK-HISTORY-INPUT-MATERIAL-AUTO-PROCESS-API][FAIL] url="+WORK_HISTORY_INPUT_MATERIAL_LOT_AUTO_PROCESS_URL+", status="+response.statusCode()+", requestBody="+ZES_lv_body+", responseBody="+response.body());
                 return new JSONArray();
             }
             return ZES_extractBomInfoFromInputMaterialResponse(response.body());
         } catch (Exception e) {
-            System.out.println("[OPC-UA][WORK-HISTORY-INPUT-MATERIAL-API][ERROR] url="+url+", message="+e.getMessage());
+            System.out.println("[OPC-UA][WORK-HISTORY-INPUT-MATERIAL-AUTO-PROCESS-API][ERROR] url="+WORK_HISTORY_INPUT_MATERIAL_LOT_AUTO_PROCESS_URL+", requestBody="+ZES_lv_body+", message="+e.getMessage());
             return new JSONArray();
         }
     }
 
-    private JSONArray ZES_extractBomInfoFromInputMaterialResponse(String responseBody)
+    private Object ZES_extractBomInfoFromInputMaterialResponse(String responseBody)
     {
         if(responseBody == null || responseBody.isBlank()) return new JSONArray();
         try {
             Object parsed = JSON.parse(responseBody);
-            if(parsed instanceof JSONArray jsonArray) return jsonArray;
-            if(parsed instanceof JSONObject jsonObject){
-                Object data = jsonObject.get("data");
-                if(data instanceof JSONArray dataArray) return dataArray;
-                if(data instanceof JSONObject dataObject){
-                    Object bomInfo = dataObject.get("bomInfo");
-                    if(bomInfo instanceof JSONArray bomInfoArray) return bomInfoArray;
-                    JSONArray wrappedData = new JSONArray();
-                    wrappedData.add(dataObject);
-                    return wrappedData;
+            if(parsed instanceof JSONArray || parsed instanceof JSONObject){
+                if(parsed instanceof JSONObject jsonObject){
+                    Object data = jsonObject.get("data");
+                    if(data != null) return data;
+                    Object bomInfo = jsonObject.get("BOMInfo");
+                    if(bomInfo != null) return bomInfo;
+                    bomInfo = jsonObject.get("bomInfo");
+                    if(bomInfo != null) return bomInfo;
                 }
-                Object bomInfo = jsonObject.get("bomInfo");
-                if(bomInfo instanceof JSONArray bomInfoArray) return bomInfoArray;
+                return parsed;
             }
         } catch (Exception e) {
-            System.out.println("[OPC-UA][WORK-HISTORY-INPUT-MATERIAL-API][PARSE-ERROR] body="+responseBody+", message="+e.getMessage());
+            System.out.println("[OPC-UA][WORK-HISTORY-INPUT-MATERIAL-AUTO-PROCESS-API][PARSE-ERROR] body="+responseBody+", message="+e.getMessage());
         }
         return new JSONArray();
     }
