@@ -456,7 +456,7 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
 
         updatePayload.put("totalPauseTime", ZES_readNodeValueAsString(pauseTime));
         updatePayload.put("pauseStartTime", null);
-        updatePayload.put("BOMInfo", bomInfo == null ? new JSONArray() : bomInfo);
+        updatePayload.put("bomInfo", bomInfo == null ? new JSONArray() : bomInfo);
         return updatePayload;
     }
 
