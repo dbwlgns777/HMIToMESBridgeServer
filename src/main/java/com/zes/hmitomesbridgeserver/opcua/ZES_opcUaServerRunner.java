@@ -51,8 +51,8 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
     private static final int ENDPOINT_PORT = 8624;
     private static final String ENDPOINT_PATH = "/lsexp2-test";
     private static final String ROOT_ENDPOINT_PATH = "/";
-    private static final String WORK_HISTORY_REGISTER_URL = "http://localhost:5500/api/v1/workHistory/kiosk/register";
-    private static final String WORK_HISTORY_UPDATE_URL = "http://localhost:5500/api/v1/workHistory/kiosk/update";
+    private static final String WORK_HISTORY_REGISTER_URL = "https://api.z-fas.com:5500/api/v1/workHistory/kiosk/register";
+    private static final String WORK_HISTORY_UPDATE_URL = "https://api.z-fas.com:5500/api/v1/workHistory/kiosk/update";
     private static final String WORK_HISTORY_INPUT_MATERIAL_LIST_URL_PREFIX = "https://api.z-fas.com:5500/api/v1/workHistory/inputMaterial/list/";
     private static final HttpClient WORK_HISTORY_HTTP_CLIENT = HttpClient.newHttpClient();
 
@@ -402,7 +402,7 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
                 workStartTime,
                 workEndTime
         );
-        System.out.println("[OPC-UA][WORK-HISTORY-UPDATE-PAYLOAD] "+updatePayload.toJSONString());
+        System.out.println("[OPC-UA][WORK-HISTORY-UPDATE-PAYLOAD] url="+WORK_HISTORY_UPDATE_URL+", payload="+updatePayload.toJSONString());
         JSONObject updateResponse = ZES_sendWorkHistoryPayload(WORK_HISTORY_UPDATE_URL, "UPDATE", updatePayload);
         ZES_debugWorkHistoryUpdateResponse(updateResponse);
     }
