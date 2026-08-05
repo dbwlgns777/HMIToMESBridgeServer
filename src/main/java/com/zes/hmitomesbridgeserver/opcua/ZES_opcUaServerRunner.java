@@ -473,6 +473,7 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
         requestBody.put("productCode", ZES_lv_productCode);
         requestBody.put("output", ZES_lv_output);
         String ZES_lv_body = requestBody.toJSONString();
+        System.out.println("[OPC-UA][WORK-HISTORY-INPUT-MATERIAL-AUTO-PROCESS-REQUEST-DEBUG] productCode="+ZES_lv_productCode+", output="+ZES_lv_output+", payload="+ZES_lv_body);
 
         try {
             HttpRequest request = HttpRequest.newBuilder()
@@ -483,6 +484,7 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
                     .POST(HttpRequest.BodyPublishers.ofString(ZES_lv_body, StandardCharsets.UTF_8))
                     .build();
             HttpResponse<String> response = WORK_HISTORY_HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+            System.out.println("[OPC-UA][WORK-HISTORY-INPUT-MATERIAL-AUTO-PROCESS-RESPONSE-DEBUG] status="+response.statusCode()+", body="+response.body());
             if(response.statusCode() >= 200 && response.statusCode() < 300){
                 System.out.println("[OPC-UA][WORK-HISTORY-INPUT-MATERIAL-AUTO-PROCESS-API] success url="+WORK_HISTORY_INPUT_MATERIAL_LOT_AUTO_PROCESS_URL+", status="+response.statusCode()+", requestBody="+ZES_lv_body+", body="+response.body());
             } else {
