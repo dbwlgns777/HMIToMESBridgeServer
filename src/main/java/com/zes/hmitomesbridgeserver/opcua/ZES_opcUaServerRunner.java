@@ -292,6 +292,7 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
             selectedWorkItem[0]=d;
             serialCodeDetail.setValue(new DataValue(new Variant(d.serial_code()))); productNameDetail.setValue(new DataValue(new Variant(d.product_name()))); workOrderCodeDetail.setValue(new DataValue(new Variant(d.work_order_code()))); processDetail.setValue(new DataValue(new Variant(d.process_row()))); processCodeDetail.setValue(new DataValue(new Variant(d.process_row()))); facilityName.setValue(new DataValue(new Variant(d.facility_name()))); facilityCode.setValue(new DataValue(new Variant(d.facility_code()))); processDefectCode.setValue(new DataValue(new Variant(d.process_defect_code()))); processDefectName.setValue(new DataValue(new Variant(d.process_defect_name()))); companyCode.setValue(new DataValue(new Variant(d.company_code()))); targetGoalDetail.setValue(new DataValue(new Variant(d.target_goal())));
             if(requestManageTriggered){
+                boolean workingHistoryRestored=false;
                 for(int itemIndex=0;itemIndex<requestManageItems.size();itemIndex++){
                     ZES_opcUaWorkItem requestedItem=requestManageItems.get(itemIndex);
                     ZES_workHistoryState history=ZES_gv_workItemProvider.ZES_getLatestActiveWorkHistory(requestedItem.work_order_code());
@@ -320,8 +321,19 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
                         companyCode.setValue(new DataValue(new Variant(requestedItem.company_code())));
                         targetGoalDetail.setValue(new DataValue(new Variant(requestedItem.target_goal())));
                         System.out.println("[OPC-UA][WORK-HISTORY-RESTORE] workOrderCode="+requestedItem.work_order_code()+", serialCode="+requestedItem.serial_code()+", productName="+requestedItem.product_name()+", startTime="+workStartTime[0]+", workTime="+ZES_formatElapsedTime(workSeconds[0])+", workStatus=1");
+                        workingHistoryRestored=true;
                         break;
                     }
+                }
+                if(!workingHistoryRestored){
+                    workStatus.setValue(new DataValue(new Variant((short)0)));
+                    activeWorkStatus[0]=0;
+                    workStartCaptured[0]=false;
+                    workStartTime[0]="0000-00-00 00:00:00";
+                    workSeconds[0]=0L;
+                    lastTimerMillis[0]=System.currentTimeMillis();
+                    workTime.setValue(new DataValue(new Variant("00:00:00")));
+                    System.out.println("[OPC-UA][WORK-HISTORY-RESTORE] no working history found, workStatus=0, workTime=00:00:00");
                 }
             }
 
