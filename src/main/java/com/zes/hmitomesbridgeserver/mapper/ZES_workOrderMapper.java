@@ -172,4 +172,14 @@ public interface ZES_workOrderMapper
                                                                   @Param("today") String today,
                                                                   @Param("size") int size,
                                                                   @Param("offset") int offset);
+
+    @Select("""
+            select work_statement, start_time
+            from ZES_Authentication.zes_work_history_info
+            where work_order_code = #{workOrderCode}
+              and statement = 'active'
+            order by start_time desc
+            limit 1
+            """)
+    Map<String, Object> ZES_selectLatestActiveWorkHistoryByWorkOrderCode(@Param("workOrderCode") String workOrderCode);
 }

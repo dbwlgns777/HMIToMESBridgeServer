@@ -32,6 +32,11 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -217,6 +222,8 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
                 return;
             }
             short requestManageNow=ZES_readInt16Safe(requestManage);
+            boolean requestManageTriggered=requestManageNow == 1;
+            List<ZES_opcUaWorkItem> requestManageItems=new ArrayList<>();
             boolean ictChanged=!queryIct.equals(lastIct[0]);
             if(ictChanged){ lastIct[0]=queryIct; cur[0]=1; totalPages[0]=1; workItemsLoaded[0]=false; pageCache.clear(); cachedItems[0]=List.of(); page.setValue(new DataValue(new Variant((short)1))); }
             if(enterEdge){ cur[0]=1; page.setValue(new DataValue(new Variant((short)1))); enter.setValue(new DataValue(new Variant(false))); }
@@ -230,13 +237,20 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
                     totalPages[0]=firstPage.totalPage();
                     cachedItems[0]=firstPage.items();
                     pageCache.put(cur[0], cachedItems[0]);
+                    requestManageItems.addAll(cachedItems[0]);
+                    for(short requestedPage=2;requestedPage<=totalPages[0];requestedPage++){
+                        ZES_opcUaWorkItemPage additionalPage=ZES_gv_workItemProvider.ZES_getWorkItemsByIctNumber(queryIct, requestedPage, WORK_ITEMS_PAGE_SIZE);
+                        pageCache.put(requestedPage, additionalPage.items());
+                        requestManageItems.addAll(additionalPage.items());
+                    }
                 } else {
                     cachedItems[0]=ZES_gv_workItemProvider.ZES_getWorkItemsByIctNumber(queryIct);
                     totalPages[0]=(short)Math.max(1,(cachedItems[0].size()+WORK_ITEMS_PAGE_SIZE-1)/WORK_ITEMS_PAGE_SIZE);
+                    requestManageItems.addAll(cachedItems[0]);
                 }
                 requestManage.setValue(new DataValue(new Variant((short)0)));
                 workItemsLoaded[0]=true;
-                System.out.println("[OPC-UA][REQUEST-MANAGE] request_manage=1, selectedIctNumber="+queryIct+", fetchedItems="+cachedItems[0].size()+", request_manage reset to 0");
+                System.out.println("[OPC-UA][REQUEST-MANAGE] request_manage=1, selectedIctNumber="+queryIct+", totalFetchedItems="+requestManageItems.size()+", totalPages="+totalPages[0]+", request_manage reset to 0");
             }
 
             if(!workItemsLoaded[0]){
@@ -277,6 +291,51 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
             int di=offset+(sel-1); ZES_opcUaWorkItem d=di<items.size()?items.get(di):ZES_emptyWorkItem();
             selectedWorkItem[0]=d;
             serialCodeDetail.setValue(new DataValue(new Variant(d.serial_code()))); productNameDetail.setValue(new DataValue(new Variant(d.product_name()))); workOrderCodeDetail.setValue(new DataValue(new Variant(d.work_order_code()))); processDetail.setValue(new DataValue(new Variant(d.process_row()))); processCodeDetail.setValue(new DataValue(new Variant(d.process_row()))); facilityName.setValue(new DataValue(new Variant(d.facility_name()))); facilityCode.setValue(new DataValue(new Variant(d.facility_code()))); processDefectCode.setValue(new DataValue(new Variant(d.process_defect_code()))); processDefectName.setValue(new DataValue(new Variant(d.process_defect_name()))); companyCode.setValue(new DataValue(new Variant(d.company_code()))); targetGoalDetail.setValue(new DataValue(new Variant(d.target_goal())));
+            if(requestManageTriggered){
+                boolean workingHistoryRestored=false;
+                for(int itemIndex=0;itemIndex<requestManageItems.size();itemIndex++){
+                    ZES_opcUaWorkItem requestedItem=requestManageItems.get(itemIndex);
+                    ZES_workHistoryState history=ZES_gv_workItemProvider.ZES_getLatestActiveWorkHistory(requestedItem.work_order_code());
+                    System.out.println("[OPC-UA][WORK-HISTORY-CHECK] item="+(itemIndex+1)+"/"+requestManageItems.size()+", workOrderCode="+requestedItem.work_order_code()+", workStatement="+(history==null?"":history.workStatement())+", startTime="+(history==null?"":history.startTime()));
+                    if(history == null || !"working".equalsIgnoreCase(history.workStatement())) continue;
+                    LocalDateTime startTime=ZES_parseWorkStartTime(history.startTime());
+                    if(startTime != null){
+                        LocalDateTime now=LocalDateTime.now();
+                        workSeconds[0]=Math.max(0L, ChronoUnit.SECONDS.between(startTime, now));
+                        workStartTime[0]=startTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+                        workStartCaptured[0]=true;
+                        activeWorkStatus[0]=1;
+                        lastTimerMillis[0]=System.currentTimeMillis();
+                        workStatus.setValue(new DataValue(new Variant((short)1)));
+                        workTime.setValue(new DataValue(new Variant(ZES_formatElapsedTime(workSeconds[0]))));
+                        selectedWorkItem[0]=requestedItem;
+                        serialCodeDetail.setValue(new DataValue(new Variant(requestedItem.serial_code())));
+                        productNameDetail.setValue(new DataValue(new Variant(requestedItem.product_name())));
+                        workOrderCodeDetail.setValue(new DataValue(new Variant(requestedItem.work_order_code())));
+                        processDetail.setValue(new DataValue(new Variant(requestedItem.process_row())));
+                        processCodeDetail.setValue(new DataValue(new Variant(requestedItem.process_row())));
+                        facilityName.setValue(new DataValue(new Variant(requestedItem.facility_name())));
+                        facilityCode.setValue(new DataValue(new Variant(requestedItem.facility_code())));
+                        processDefectCode.setValue(new DataValue(new Variant(requestedItem.process_defect_code())));
+                        processDefectName.setValue(new DataValue(new Variant(requestedItem.process_defect_name())));
+                        companyCode.setValue(new DataValue(new Variant(requestedItem.company_code())));
+                        targetGoalDetail.setValue(new DataValue(new Variant(requestedItem.target_goal())));
+                        System.out.println("[OPC-UA][WORK-HISTORY-RESTORE] workOrderCode="+requestedItem.work_order_code()+", serialCode="+requestedItem.serial_code()+", productName="+requestedItem.product_name()+", startTime="+workStartTime[0]+", workTime="+ZES_formatElapsedTime(workSeconds[0])+", workStatus=1");
+                        workingHistoryRestored=true;
+                        break;
+                    }
+                }
+                if(!workingHistoryRestored){
+                    workStatus.setValue(new DataValue(new Variant((short)0)));
+                    activeWorkStatus[0]=0;
+                    workStartCaptured[0]=false;
+                    workStartTime[0]="0000-00-00 00:00:00";
+                    workSeconds[0]=0L;
+                    lastTimerMillis[0]=System.currentTimeMillis();
+                    workTime.setValue(new DataValue(new Variant("00:00:00")));
+                    System.out.println("[OPC-UA][WORK-HISTORY-RESTORE] no working history found, workStatus=0, workTime=00:00:00");
+                }
+            }
 
             System.out.println("[OPC-UA][DB-RESULT] itemCount="+items.size()+", queryIct="+queryIct+", page="+req+", selectedRow="+sel);
             for(int i=0;i<5;i++){
@@ -285,8 +344,9 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
                 Object targetTagVal=target[i].getValue().getValue().getValue();
                 Object processTagVal=process[i].getValue().getValue().getValue();
                 Object deadlineTagVal=deadline[i].getValue().getValue().getValue();
+                Object workOrderCodeTagVal=workOrderCode[i].getValue().getValue().getValue();
                 int row=i+1;
-                System.out.println("[OPC-UA][WORKITEM-TAG] row"+row+"_serialCode="+serialTagVal+", row"+row+"_productName="+pnameTagVal+", row"+row+"_targetGoal="+targetTagVal+", row"+row+"_process="+processTagVal+", row"+row+"_deadline="+deadlineTagVal);
+                System.out.println("[OPC-UA][WORKITEM-TAG] row"+row+"_serialCode="+serialTagVal+", row"+row+"_productName="+pnameTagVal+", row"+row+"_targetGoal="+targetTagVal+", row"+row+"_process="+processTagVal+", row"+row+"_deadline="+deadlineTagVal+", row"+row+"_workOrderCode="+workOrderCodeTagVal);
             }
             System.out.println("[OPC-UA][WORKITEM-DETAIL-TAG] serialCodeDetail="+serialCodeDetail.getValue().getValue().getValue()+", productNameDetail="+productNameDetail.getValue().getValue().getValue()+", workOrderCodeDetail="+workOrderCodeDetail.getValue().getValue().getValue()+", processDetail="+processDetail.getValue().getValue().getValue()+", targetGoalDetail="+targetGoalDetail.getValue().getValue().getValue());
 
@@ -569,6 +629,19 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
     private String ZES_formatCurrentTime()
     {
         return java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+    }
+
+    private LocalDateTime ZES_parseWorkStartTime(String value)
+    {
+        if (value == null || value.isBlank()) return null;
+        String normalized = value.trim();
+        if (normalized.length() > 19) normalized = normalized.substring(0, 19);
+        try {
+            return LocalDateTime.parse(normalized, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+        } catch (DateTimeParseException e) {
+            System.out.println("[OPC-UA][WORK-HISTORY-RESTORE] invalid start_time="+value);
+            return null;
+        }
     }
 
     private short ZES_readInt16Safe(UaVariableNode node)
