@@ -97,9 +97,32 @@ public class ZES_dbWorkItemProvider implements ZES_opcUaWorkItemProvider
         if (ZES_lv_row == null) return null;
 
         return new ZES_workHistoryState(
+                ZES_toStringOrEmpty(ZES_lv_row.get("work_history_code")),
+                ZES_toStringOrEmpty(ZES_lv_row.get("company_code")),
                 ZES_toStringOrEmpty(ZES_lv_row.get("work_statement")),
                 ZES_toStringOrEmpty(ZES_lv_row.get("start_time"))
         );
+    }
+
+    @Override
+    public ZES_workHistoryState ZES_getActiveWorkHistory(String workHistoryCode)
+    {
+        if (workHistoryCode == null || workHistoryCode.isBlank()) return null;
+        Map<String, Object> row = ZES_gv_workOrderMapper.ZES_selectActiveWorkHistoryByCode(workHistoryCode);
+        if (row == null) return null;
+        return new ZES_workHistoryState(
+                ZES_toStringOrEmpty(row.get("work_history_code")),
+                ZES_toStringOrEmpty(row.get("company_code")),
+                ZES_toStringOrEmpty(row.get("work_statement")),
+                ZES_toStringOrEmpty(row.get("start_time"))
+        );
+    }
+
+    @Override
+    public boolean ZES_hasOtherWorkingHistory(String companyCode, String workHistoryCode)
+    {
+        if (companyCode == null || companyCode.isBlank() || workHistoryCode == null || workHistoryCode.isBlank()) return false;
+        return ZES_gv_workOrderMapper.ZES_countOtherWorkingHistory(companyCode, workHistoryCode) > 0;
     }
 
     private ZES_opcUaWorkItem ZES_toWorkItem(JSONObject ZES_lv_workOrderRow)

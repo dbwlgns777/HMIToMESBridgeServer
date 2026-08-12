@@ -174,7 +174,7 @@ public interface ZES_workOrderMapper
                                                                   @Param("offset") int offset);
 
     @Select("""
-            select work_statement, start_time
+            select work_history_code, company_code, work_statement, start_time
             from ZES_Authentication.zes_work_history_info
             where work_order_code = #{workOrderCode}
               and statement = 'active'
@@ -182,4 +182,24 @@ public interface ZES_workOrderMapper
             limit 1
             """)
     Map<String, Object> ZES_selectLatestActiveWorkHistoryByWorkOrderCode(@Param("workOrderCode") String workOrderCode);
+
+    @Select("""
+            select work_history_code, company_code, work_statement, start_time
+            from ZES_Authentication.zes_work_history_info
+            where work_history_code = #{workHistoryCode}
+              and statement = 'active'
+            limit 1
+            """)
+    Map<String, Object> ZES_selectActiveWorkHistoryByCode(@Param("workHistoryCode") String workHistoryCode);
+
+    @Select("""
+            select count(*)
+            from ZES_Authentication.zes_work_history_info
+            where company_code = #{companyCode}
+              and work_statement = 'working'
+              and statement = 'active'
+              and work_history_code != #{workHistoryCode}
+            """)
+    int ZES_countOtherWorkingHistory(@Param("companyCode") String companyCode,
+                                     @Param("workHistoryCode") String workHistoryCode);
 }
