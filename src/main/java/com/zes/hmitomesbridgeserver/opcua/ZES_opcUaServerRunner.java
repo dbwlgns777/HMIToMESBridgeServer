@@ -92,6 +92,7 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
 
         UaVariableNode ict=rwInt32(ctx,ns,"LS_EXP2/selectedIctNumber","selectedIctNumber",0);
         UaVariableNode requestManage=rwInt16(ctx,ns,"LS_EXP2/request_manage","request_manage",(short)0);
+        UaVariableNode resultTag=rwInt16(ctx,ns,"LS_EXP2/ResultTag","ResultTag",(short)0);
         UaVariableNode enter=rwBool(ctx,ns,"LS_EXP2/workOrderPageEnter","workOrderPageEnter",false);
         UaVariableNode workStatus=rwInt16(ctx,ns,"LS_EXP2/workStatus","workStatus",(short)0);
         UaVariableNode workTime=roString(ctx,ns,"LS_EXP2/workTime","workTime","00:00:00");
@@ -115,7 +116,7 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
         UaVariableNode processDefectName=roString(ctx,ns,"LS_EXP2/process_defect_name","process_defect_name","");
         UaVariableNode companyCode=roString(ctx,ns,"LS_EXP2/company_code","company_code","");
         UaVariableNode targetGoalDetail=roInt16(ctx,ns,"LS_EXP2/targetGoalDetail","targetGoalDetail",(short)0);
-        add(nm,server,root,ict);add(nm,server,root,requestManage);add(nm,server,root,enter);add(nm,server,root,workStatus);add(nm,server,root,workTime);add(nm,server,root,pauseTime);add(nm,server,root,goodQuantity);add(nm,server,root,totalDefectiveQuantity);add(nm,server,root,totalPauseTime);add(nm,server,root,page);add(nm,server,root,plus);add(nm,server,root,minus);add(nm,server,root,totalPage);
+        add(nm,server,root,ict);add(nm,server,root,requestManage);add(nm,server,root,resultTag);add(nm,server,root,enter);add(nm,server,root,workStatus);add(nm,server,root,workTime);add(nm,server,root,pauseTime);add(nm,server,root,goodQuantity);add(nm,server,root,totalDefectiveQuantity);add(nm,server,root,totalPauseTime);add(nm,server,root,page);add(nm,server,root,plus);add(nm,server,root,minus);add(nm,server,root,totalPage);
         add(nm,server,root,selectedRow);add(nm,server,root,serialCodeDetail);add(nm,server,root,productNameDetail);add(nm,server,root,workOrderCodeDetail);add(nm,server,root,processDetail);add(nm,server,root,processCodeDetail);add(nm,server,root,facilityName);add(nm,server,root,facilityCode);add(nm,server,root,processDefectCode);add(nm,server,root,processDefectName);add(nm,server,root,companyCode);add(nm,server,root,targetGoalDetail);
 
         UaVariableNode[] serial=new UaVariableNode[5], pname=new UaVariableNode[5], target=new UaVariableNode[5], process=new UaVariableNode[5], deadline=new UaVariableNode[5], processCode=new UaVariableNode[5], workOrderCode=new UaVariableNode[5];
@@ -223,6 +224,7 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
             }
             short requestManageNow=ZES_readInt16Safe(requestManage);
             boolean requestManageTriggered=requestManageNow == 1;
+            boolean resultRequested=ZES_readInt16Safe(resultTag) == 1;
             List<ZES_opcUaWorkItem> requestManageItems=new ArrayList<>();
             boolean ictChanged=!queryIct.equals(lastIct[0]);
             if(ictChanged){ lastIct[0]=queryIct; cur[0]=1; totalPages[0]=1; workItemsLoaded[0]=false; pageCache.clear(); cachedItems[0]=List.of(); page.setValue(new DataValue(new Variant((short)1))); }
@@ -315,6 +317,10 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
                         ZES_setWorkItemDetailTags(requestedItem, serialCodeDetail, productNameDetail, workOrderCodeDetail, processDetail, processCodeDetail, facilityName, facilityCode, processDefectCode, processDefectName, companyCode, targetGoalDetail);
                         System.out.println("[OPC-UA][WORK-HISTORY-RESTORE] workOrderCode="+requestedItem.work_order_code()+", serialCode="+requestedItem.serial_code()+", productName="+requestedItem.product_name()+", startTime="+workStartTime[0]+", workTime="+ZES_formatElapsedTime(workSeconds[0])+", workStatus=1");
                         workingHistoryRestored=true;
+                        if(resultRequested){
+                            resultTag.setValue(new DataValue(new Variant((short)2)));
+                            System.out.println("[OPC-UA][RESULT-TAG] working history found, ResultTag=2");
+                        }
                         break;
                     }
                 }
@@ -326,6 +332,10 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
                     workSeconds[0]=0L;
                     lastTimerMillis[0]=System.currentTimeMillis();
                     workTime.setValue(new DataValue(new Variant("00:00:00")));
+                    if(resultRequested){
+                        resultTag.setValue(new DataValue(new Variant((short)3)));
+                        System.out.println("[OPC-UA][RESULT-TAG] working history not found, ResultTag=3");
+                    }
                     System.out.println("[OPC-UA][WORK-HISTORY-RESTORE] no working history found, workStatus=0, workTime=00:00:00");
                 }
             }
