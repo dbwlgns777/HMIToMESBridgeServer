@@ -289,8 +289,11 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
             for(int i=0;i<WORK_ITEMS_PAGE_SIZE;i++){int idx=offset+i; boolean hasItem=idx<items.size(); ZES_opcUaWorkItem w=hasItem?items.get(idx):ZES_emptyWorkItem();
                 serial[i].setValue(new DataValue(new Variant(w.serial_code()))); pname[i].setValue(new DataValue(new Variant(w.product_name()))); target[i].setValue(new DataValue(new Variant(hasItem?String.valueOf(w.target_goal()):""))); process[i].setValue(new DataValue(new Variant(w.process_row()))); deadline[i].setValue(new DataValue(new Variant(w.deadline()))); processCode[i].setValue(new DataValue(new Variant(w.process_row()))); workOrderCode[i].setValue(new DataValue(new Variant(w.work_order_code())));}
             int di=offset+(sel-1); ZES_opcUaWorkItem d=di<items.size()?items.get(di):ZES_emptyWorkItem();
-            selectedWorkItem[0]=d;
-            serialCodeDetail.setValue(new DataValue(new Variant(d.serial_code()))); productNameDetail.setValue(new DataValue(new Variant(d.product_name()))); workOrderCodeDetail.setValue(new DataValue(new Variant(d.work_order_code()))); processDetail.setValue(new DataValue(new Variant(d.process_row()))); processCodeDetail.setValue(new DataValue(new Variant(d.process_row()))); facilityName.setValue(new DataValue(new Variant(d.facility_name()))); facilityCode.setValue(new DataValue(new Variant(d.facility_code()))); processDefectCode.setValue(new DataValue(new Variant(d.process_defect_code()))); processDefectName.setValue(new DataValue(new Variant(d.process_defect_name()))); companyCode.setValue(new DataValue(new Variant(d.company_code()))); targetGoalDetail.setValue(new DataValue(new Variant(d.target_goal())));
+            boolean activeWorkItemLocked=activeWorkStatus[0] == 1 && !selectedWorkItem[0].work_order_code().isBlank();
+            if(!activeWorkItemLocked){
+                selectedWorkItem[0]=d;
+                ZES_setWorkItemDetailTags(d, serialCodeDetail, productNameDetail, workOrderCodeDetail, processDetail, processCodeDetail, facilityName, facilityCode, processDefectCode, processDefectName, companyCode, targetGoalDetail);
+            }
             if(requestManageTriggered){
                 boolean workingHistoryRestored=false;
                 for(int itemIndex=0;itemIndex<requestManageItems.size();itemIndex++){
@@ -309,17 +312,7 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
                         workStatus.setValue(new DataValue(new Variant((short)1)));
                         workTime.setValue(new DataValue(new Variant(ZES_formatElapsedTime(workSeconds[0]))));
                         selectedWorkItem[0]=requestedItem;
-                        serialCodeDetail.setValue(new DataValue(new Variant(requestedItem.serial_code())));
-                        productNameDetail.setValue(new DataValue(new Variant(requestedItem.product_name())));
-                        workOrderCodeDetail.setValue(new DataValue(new Variant(requestedItem.work_order_code())));
-                        processDetail.setValue(new DataValue(new Variant(requestedItem.process_row())));
-                        processCodeDetail.setValue(new DataValue(new Variant(requestedItem.process_row())));
-                        facilityName.setValue(new DataValue(new Variant(requestedItem.facility_name())));
-                        facilityCode.setValue(new DataValue(new Variant(requestedItem.facility_code())));
-                        processDefectCode.setValue(new DataValue(new Variant(requestedItem.process_defect_code())));
-                        processDefectName.setValue(new DataValue(new Variant(requestedItem.process_defect_name())));
-                        companyCode.setValue(new DataValue(new Variant(requestedItem.company_code())));
-                        targetGoalDetail.setValue(new DataValue(new Variant(requestedItem.target_goal())));
+                        ZES_setWorkItemDetailTags(requestedItem, serialCodeDetail, productNameDetail, workOrderCodeDetail, processDetail, processCodeDetail, facilityName, facilityCode, processDefectCode, processDefectName, companyCode, targetGoalDetail);
                         System.out.println("[OPC-UA][WORK-HISTORY-RESTORE] workOrderCode="+requestedItem.work_order_code()+", serialCode="+requestedItem.serial_code()+", productName="+requestedItem.product_name()+", startTime="+workStartTime[0]+", workTime="+ZES_formatElapsedTime(workSeconds[0])+", workStatus=1");
                         workingHistoryRestored=true;
                         break;
@@ -616,6 +609,33 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
     private ZES_opcUaWorkItem ZES_emptyWorkItem()
     {
         return new ZES_opcUaWorkItem("", "", "", "", "", "", "", "", "", "", "", "");
+    }
+
+    private void ZES_setWorkItemDetailTags(
+            ZES_opcUaWorkItem item,
+            UaVariableNode serialCodeDetail,
+            UaVariableNode productNameDetail,
+            UaVariableNode workOrderCodeDetail,
+            UaVariableNode processDetail,
+            UaVariableNode processCodeDetail,
+            UaVariableNode facilityName,
+            UaVariableNode facilityCode,
+            UaVariableNode processDefectCode,
+            UaVariableNode processDefectName,
+            UaVariableNode companyCode,
+            UaVariableNode targetGoalDetail)
+    {
+        serialCodeDetail.setValue(new DataValue(new Variant(item.serial_code())));
+        productNameDetail.setValue(new DataValue(new Variant(item.product_name())));
+        workOrderCodeDetail.setValue(new DataValue(new Variant(item.work_order_code())));
+        processDetail.setValue(new DataValue(new Variant(item.process_row())));
+        processCodeDetail.setValue(new DataValue(new Variant(item.process_row())));
+        facilityName.setValue(new DataValue(new Variant(item.facility_name())));
+        facilityCode.setValue(new DataValue(new Variant(item.facility_code())));
+        processDefectCode.setValue(new DataValue(new Variant(item.process_defect_code())));
+        processDefectName.setValue(new DataValue(new Variant(item.process_defect_name())));
+        companyCode.setValue(new DataValue(new Variant(item.company_code())));
+        targetGoalDetail.setValue(new DataValue(new Variant(item.target_goal())));
     }
 
     private String ZES_formatElapsedTime(long totalSeconds)
