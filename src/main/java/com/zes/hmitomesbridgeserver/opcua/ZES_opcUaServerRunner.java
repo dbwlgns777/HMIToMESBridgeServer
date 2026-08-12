@@ -224,7 +224,6 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
             }
             short requestManageNow=ZES_readInt16Safe(requestManage);
             boolean requestManageTriggered=requestManageNow == 1;
-            boolean resultRequested=ZES_readInt16Safe(resultTag) == 1;
             List<ZES_opcUaWorkItem> requestManageItems=new ArrayList<>();
             boolean ictChanged=!queryIct.equals(lastIct[0]);
             if(ictChanged){ lastIct[0]=queryIct; cur[0]=1; totalPages[0]=1; workItemsLoaded[0]=false; pageCache.clear(); cachedItems[0]=List.of(); page.setValue(new DataValue(new Variant((short)1))); }
@@ -317,10 +316,6 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
                         ZES_setWorkItemDetailTags(requestedItem, serialCodeDetail, productNameDetail, workOrderCodeDetail, processDetail, processCodeDetail, facilityName, facilityCode, processDefectCode, processDefectName, companyCode, targetGoalDetail);
                         System.out.println("[OPC-UA][WORK-HISTORY-RESTORE] workOrderCode="+requestedItem.work_order_code()+", serialCode="+requestedItem.serial_code()+", productName="+requestedItem.product_name()+", startTime="+workStartTime[0]+", workTime="+ZES_formatElapsedTime(workSeconds[0])+", workStatus=1");
                         workingHistoryRestored=true;
-                        if(resultRequested){
-                            resultTag.setValue(new DataValue(new Variant((short)2)));
-                            System.out.println("[OPC-UA][RESULT-TAG] working history found, ResultTag=2");
-                        }
                         break;
                     }
                 }
@@ -332,10 +327,6 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
                     workSeconds[0]=0L;
                     lastTimerMillis[0]=System.currentTimeMillis();
                     workTime.setValue(new DataValue(new Variant("00:00:00")));
-                    if(resultRequested){
-                        resultTag.setValue(new DataValue(new Variant((short)3)));
-                        System.out.println("[OPC-UA][RESULT-TAG] working history not found, ResultTag=3");
-                    }
                     System.out.println("[OPC-UA][WORK-HISTORY-RESTORE] no working history found, workStatus=0, workTime=00:00:00");
                 }
             }
