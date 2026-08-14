@@ -176,6 +176,7 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
                 if(workModeNow == 1 && workStartCaptured[0]) activeWorkMode[0]=1;
                 if(workModeNow == 2 && workStartCaptured[0]) activeWorkMode[0]=2;
                 if(workModeNow == 3){
+                    boolean switchedToOtherWorking=false;
                     workEndTime[0]=ZES_formatCurrentTime();
                     ZES_opcUaWorkItem workEndItem=selectedWorkItem[0];
                     System.out.println("[OPC-UA][WORK-END-DEBUG] workStatus=3, workStartTime="+workStartTime[0]+", workEndTime="+workEndTime[0]
@@ -249,12 +250,13 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
                                 registerResponse[0]=ZES_buildRestoredRegisterResponse(otherHistory);
                                 activeWorkMode[0]=1;
                                 workStatus.setValue(new DataValue(new Variant((short)3)));
+                                switchedToOtherWorking=true;
                                 System.out.println("[OPC-UA][WORK-HISTORY-SWITCH] switched to other working history, workStatus=3, workHistoryCode="+otherHistory.workHistoryCode());
                             }
                         }
                     }
-                    workMode.setValue(new DataValue(new Variant((short)0)));
-                    workModeNow=0;
+                    workModeNow=switchedToOtherWorking?(short)1:(short)0;
+                    workMode.setValue(new DataValue(new Variant(workModeNow)));
                 }
                 lastWorkModeCommand[0]=workModeNow;
                 lastTimerMillis[0]=timerNow;
@@ -367,7 +369,12 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
                         workSeconds[0]=Math.max(0L, ChronoUnit.SECONDS.between(startTime, now));
                         workStartTime[0]=startTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
                         workStartCaptured[0]=true;
-                        activeWorkMode[0]=1;
+                        short restoredWorkMode=ZES_readInt16Safe(workMode);
+                        if(restoredWorkMode == 0){
+                            workMode.setValue(new DataValue(new Variant((short)1)));
+                            restoredWorkMode=1;
+                        }
+                        activeWorkMode[0]=restoredWorkMode == 2?(short)2:(short)1;
                         lastTimerMillis[0]=System.currentTimeMillis();
                         workStatus.setValue(new DataValue(new Variant((short)1)));
                         workTime.setValue(new DataValue(new Variant(ZES_formatElapsedTime(workSeconds[0]))));
@@ -376,7 +383,7 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
                         activeWorkHistoryCode[0]=history.workHistoryCode();
                         activeCompanyCode[0]=history.companyCode();
                         registerResponse[0]=ZES_buildRestoredRegisterResponse(history);
-                        System.out.println("[OPC-UA][WORK-HISTORY-RESTORE] workOrderCode="+requestedItem.work_order_code()+", serialCode="+requestedItem.serial_code()+", productName="+requestedItem.product_name()+", startTime="+workStartTime[0]+", workTime="+ZES_formatElapsedTime(workSeconds[0])+", workStatus=1");
+                        System.out.println("[OPC-UA][WORK-HISTORY-RESTORE] workOrderCode="+requestedItem.work_order_code()+", serialCode="+requestedItem.serial_code()+", productName="+requestedItem.product_name()+", startTime="+workStartTime[0]+", workTime="+ZES_formatElapsedTime(workSeconds[0])+", workStatus=1, workMode="+restoredWorkMode);
                         workingHistoryRestored=true;
                         break;
                     }
