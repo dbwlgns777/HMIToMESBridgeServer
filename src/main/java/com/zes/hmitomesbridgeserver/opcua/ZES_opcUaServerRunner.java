@@ -131,6 +131,10 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
             try {
             long timerNow=System.currentTimeMillis();
             short workModeNow=ZES_readInt16Safe(workMode);
+            // Apply pause/resume mode before attributing elapsed time. Otherwise the
+            // first polling interval after 1 -> 2 is incorrectly counted as work.
+            if(workStartCaptured[0] && workModeNow == 1) activeWorkMode[0]=1;
+            if(workStartCaptured[0] && workModeNow == 2) activeWorkMode[0]=2;
             long elapsedSeconds=(timerNow-lastTimerMillis[0])/1000L;
             if(elapsedSeconds > 0){
                 if(activeWorkMode[0] == 1) workSeconds[0]+=elapsedSeconds;
