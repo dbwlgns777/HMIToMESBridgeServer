@@ -144,7 +144,7 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
                     ZES_opcUaWorkItem workStartItem=selectedWorkItem[0];
                     ZES_workHistoryState existingHistory=ZES_gv_workItemProvider.ZES_getLatestActiveWorkHistory(workStartItem.work_order_code());
                     if(existingHistory != null && "working".equalsIgnoreCase(existingHistory.workStatement())){
-                        ZES_restoreWorkingHistory(existingHistory, workStartItem, workStatus, workTime, serialCodeDetail, productNameDetail, workOrderCodeDetail, processDetail, processCodeDetail, facilityName, facilityCode, processDefectCode, processDefectName, companyCode, targetGoalDetail, selectedWorkItem, workSeconds, workStartTime, workStartCaptured, lastTimerMillis);
+                        ZES_restoreWorkingHistory(existingHistory, workStartItem, workStatus, workTime, serialCodeDetail, productNameDetail, workOrderCodeDetail, processDetail, processCodeDetail, facilityName, facilityCode, processDefectCode, processDefectName, companyCode, targetGoalDetail, selectedWorkItem, workSeconds, pauseSeconds, workStartTime, workStartCaptured, lastTimerMillis);
                         activeWorkHistoryCode[0]=existingHistory.workHistoryCode();
                         activeCompanyCode[0]=existingHistory.companyCode();
                         registerResponse[0]=ZES_buildRestoredRegisterResponse(existingHistory);
@@ -244,7 +244,7 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
                                 activeWorkMode[0]=0;
                                 System.out.println("[OPC-UA][WORK-END-SKIP] other working item details not found, workStatus=2");
                             } else {
-                                ZES_restoreWorkingHistory(otherHistory, otherItem, workStatus, workTime, serialCodeDetail, productNameDetail, workOrderCodeDetail, processDetail, processCodeDetail, facilityName, facilityCode, processDefectCode, processDefectName, companyCode, targetGoalDetail, selectedWorkItem, workSeconds, workStartTime, workStartCaptured, lastTimerMillis);
+                                ZES_restoreWorkingHistory(otherHistory, otherItem, workStatus, workTime, serialCodeDetail, productNameDetail, workOrderCodeDetail, processDetail, processCodeDetail, facilityName, facilityCode, processDefectCode, processDefectName, companyCode, targetGoalDetail, selectedWorkItem, workSeconds, pauseSeconds, workStartTime, workStartCaptured, lastTimerMillis);
                                 activeWorkHistoryCode[0]=otherHistory.workHistoryCode();
                                 activeCompanyCode[0]=otherHistory.companyCode();
                                 registerResponse[0]=ZES_buildRestoredRegisterResponse(otherHistory);
@@ -366,7 +366,8 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
                     LocalDateTime startTime=ZES_parseWorkStartTime(history.startTime());
                     if(startTime != null){
                         LocalDateTime now=LocalDateTime.now();
-                        workSeconds[0]=Math.max(0L, ChronoUnit.SECONDS.between(startTime, now));
+                        long totalElapsedSeconds=Math.max(0L, ChronoUnit.SECONDS.between(startTime, now));
+                        workSeconds[0]=Math.max(0L, totalElapsedSeconds-pauseSeconds[0]);
                         workStartTime[0]=startTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
                         workStartCaptured[0]=true;
                         short restoredWorkMode=ZES_readInt16Safe(workMode);
@@ -739,13 +740,15 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
             UaVariableNode targetGoalDetail,
             ZES_opcUaWorkItem[] selectedWorkItem,
             long[] workSeconds,
+            long[] pauseSeconds,
             String[] workStartTime,
             boolean[] workStartCaptured,
             long[] lastTimerMillis)
     {
         LocalDateTime startTime=ZES_parseWorkStartTime(history.startTime());
         if(startTime == null) return;
-        workSeconds[0]=Math.max(0L, ChronoUnit.SECONDS.between(startTime, LocalDateTime.now()));
+        long totalElapsedSeconds=Math.max(0L, ChronoUnit.SECONDS.between(startTime, LocalDateTime.now()));
+        workSeconds[0]=Math.max(0L, totalElapsedSeconds-pauseSeconds[0]);
         workStartTime[0]=startTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
         workStartCaptured[0]=true;
         lastTimerMillis[0]=System.currentTimeMillis();
