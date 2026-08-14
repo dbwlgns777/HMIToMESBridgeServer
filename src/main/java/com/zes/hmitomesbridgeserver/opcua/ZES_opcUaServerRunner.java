@@ -203,7 +203,7 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
                             +", totalPauseTime="+totalPauseTime.getValue().getValue().getValue());
                     ZES_workHistoryState currentHistory=ZES_gv_workItemProvider.ZES_getActiveWorkHistory(activeWorkHistoryCode[0]);
                     if(currentHistory != null && "working".equalsIgnoreCase(currentHistory.workStatement())){
-                    ZES_sendWorkHistoryUpdateIfRegisterSuccess(
+                    boolean updateSucceeded=ZES_sendWorkHistoryUpdateIfRegisterSuccess(
                             registerResponse[0],
                             companyCode,
                             goodQuantity,
@@ -216,19 +216,30 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
                             workStartTime[0],
                             workEndTime[0]
                     );
-                    registerResponse[0]=null;
-                    activeWorkHistoryCode[0]="";
-                    activeCompanyCode[0]="";
-                    workStartTime[0]="0000-00-00 00:00:00";
-                    workEndTime[0]="0000-00-00 00:00:00";
-                    workSeconds[0]=0L;
-                    pauseSeconds[0]=0L;
-                    workStartCaptured[0]=false;
-                    workTime.setValue(new DataValue(new Variant("00:00:00")));
-                    pauseTime.setValue(new DataValue(new Variant("00:00:00")));
-                    workStatus.setValue(new DataValue(new Variant((short)0)));
-                    System.out.println("[OPC-UA][WORK-END-DEBUG] workStartTime and workEndTime reset to 0000-00-00 00:00:00, workTime and pauseTime reset to 00:00:00, workStatus reset to 0 after work end debug log");
-                    activeWorkMode[0]=0;
+                    if(updateSucceeded){
+                        ZES_workHistoryState updatedHistory=ZES_gv_workItemProvider.ZES_getActiveWorkHistory(activeWorkHistoryCode[0]);
+                        ZES_workHistoryState otherWorkingHistory=ZES_gv_workItemProvider.ZES_getOtherWorkingHistory(activeCompanyCode[0], activeWorkHistoryCode[0]);
+                        boolean currentHistoryStillWorking=updatedHistory != null && "working".equalsIgnoreCase(updatedHistory.workStatement());
+                        if(!currentHistoryStillWorking && otherWorkingHistory == null){
+                            registerResponse[0]=null;
+                            activeWorkHistoryCode[0]="";
+                            activeCompanyCode[0]="";
+                            workStartTime[0]="0000-00-00 00:00:00";
+                            workEndTime[0]="0000-00-00 00:00:00";
+                            workSeconds[0]=0L;
+                            pauseSeconds[0]=0L;
+                            workStartCaptured[0]=false;
+                            workTime.setValue(new DataValue(new Variant("00:00:00")));
+                            pauseTime.setValue(new DataValue(new Variant("00:00:00")));
+                            workStatus.setValue(new DataValue(new Variant((short)0)));
+                            activeWorkMode[0]=0;
+                            System.out.println("[OPC-UA][WORK-END] update succeeded and no working history remains, workStatus=0");
+                        } else {
+                            System.out.println("[OPC-UA][WORK-END] update succeeded but a working history remains, workStatus was not reset");
+                        }
+                    } else {
+                        System.out.println("[OPC-UA][WORK-END] update failed or was skipped, runtime state and workStatus were not reset");
+                    }
                     } else {
                         ZES_workHistoryState otherHistory=ZES_gv_workItemProvider.ZES_getOtherWorkingHistory(
                                 activeCompanyCode[0].isBlank() && currentHistory != null?currentHistory.companyCode():activeCompanyCode[0],
@@ -526,7 +537,7 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
         }
     }
 
-    private void ZES_sendWorkHistoryUpdateIfRegisterSuccess(
+    private boolean ZES_sendWorkHistoryUpdateIfRegisterSuccess(
             JSONObject registerResponse,
             UaVariableNode companyCode,
             UaVariableNode goodQuantity,
@@ -542,19 +553,19 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
     {
         if(registerResponse == null){
             System.out.println("[OPC-UA][WORK-HISTORY-UPDATE-SKIP] register response is null");
-            return;
+            return false;
         }
         String ZES_lv_message = ZES_readJsonValueAsString(registerResponse.get("message"));
         if(!"success".equalsIgnoreCase(ZES_lv_message)){
             System.out.println("[OPC-UA][WORK-HISTORY-UPDATE-SKIP] register message="+ZES_lv_message);
-            return;
+            return false;
         }
 
         JSONObject ZES_lv_data = ZES_toJsonObject(registerResponse.get("data"));
         String ZES_lv_workHistoryCode = ZES_lv_data == null ? "" : ZES_readJsonValueAsString(ZES_lv_data.get("workHistoryCode"));
         if(ZES_lv_workHistoryCode.isEmpty()){
             System.out.println("[OPC-UA][WORK-HISTORY-UPDATE-SKIP] workHistoryCode is empty, data="+registerResponse.get("data"));
-            return;
+            return false;
         }
 
         Object ZES_lv_bomInfo = ZES_getWorkHistoryInputMaterialLotAutoProcess(productCode, goodQuantity);
@@ -574,6 +585,7 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
         System.out.println("[OPC-UA][WORK-HISTORY-UPDATE-PAYLOAD] url="+WORK_HISTORY_UPDATE_URL+", payload="+updatePayload.toJSONString());
         JSONObject updateResponse = ZES_sendWorkHistoryPayload(WORK_HISTORY_UPDATE_URL, "UPDATE", updatePayload);
         ZES_debugWorkHistoryUpdateResponse(updateResponse);
+        return updateResponse != null && "success".equalsIgnoreCase(ZES_readJsonValueAsString(updateResponse.get("message")));
     }
 
     private void ZES_debugWorkHistoryUpdateResponse(JSONObject updateResponse)
