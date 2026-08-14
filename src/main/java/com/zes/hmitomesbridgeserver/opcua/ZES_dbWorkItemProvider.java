@@ -88,6 +88,75 @@ public class ZES_dbWorkItemProvider implements ZES_opcUaWorkItemProvider
         return new ZES_opcUaWorkItemPage(ZES_lv_items, ZES_lv_totalPage);
     }
 
+    @Override
+    public ZES_workHistoryState ZES_getLatestActiveWorkHistory(String workOrderCode)
+    {
+        if (workOrderCode == null || workOrderCode.isBlank()) return null;
+
+        Map<String, Object> ZES_lv_row = ZES_gv_workOrderMapper.ZES_selectLatestActiveWorkHistoryByWorkOrderCode(workOrderCode);
+        if (ZES_lv_row == null) return null;
+
+        return new ZES_workHistoryState(
+                ZES_toStringOrEmpty(ZES_lv_row.get("work_history_code")),
+                ZES_toStringOrEmpty(ZES_lv_row.get("work_order_code")),
+                ZES_toStringOrEmpty(ZES_lv_row.get("company_code")),
+                ZES_toStringOrEmpty(ZES_lv_row.get("work_statement")),
+                ZES_toStringOrEmpty(ZES_lv_row.get("start_time"))
+        );
+    }
+
+    @Override
+    public ZES_workHistoryState ZES_getActiveWorkHistory(String workHistoryCode)
+    {
+        if (workHistoryCode == null || workHistoryCode.isBlank()) return null;
+        Map<String, Object> row = ZES_gv_workOrderMapper.ZES_selectActiveWorkHistoryByCode(workHistoryCode);
+        if (row == null) return null;
+        return new ZES_workHistoryState(
+                ZES_toStringOrEmpty(row.get("work_history_code")),
+                ZES_toStringOrEmpty(row.get("work_order_code")),
+                ZES_toStringOrEmpty(row.get("company_code")),
+                ZES_toStringOrEmpty(row.get("work_statement")),
+                ZES_toStringOrEmpty(row.get("start_time"))
+        );
+    }
+
+    @Override
+    public ZES_workHistoryState ZES_getOtherWorkingHistory(String companyCode, String workHistoryCode)
+    {
+        if (companyCode == null || companyCode.isBlank() || workHistoryCode == null || workHistoryCode.isBlank()) return null;
+        Map<String, Object> row = ZES_gv_workOrderMapper.ZES_selectOtherWorkingHistory(companyCode, workHistoryCode);
+        if (row == null) return null;
+        return new ZES_workHistoryState(
+                ZES_toStringOrEmpty(row.get("work_history_code")),
+                ZES_toStringOrEmpty(row.get("work_order_code")),
+                ZES_toStringOrEmpty(row.get("company_code")),
+                ZES_toStringOrEmpty(row.get("work_statement")),
+                ZES_toStringOrEmpty(row.get("start_time"))
+        );
+    }
+
+    @Override
+    public ZES_opcUaWorkItem ZES_getWorkItemByWorkOrderCode(String workOrderCode)
+    {
+        if (workOrderCode == null || workOrderCode.isBlank()) return null;
+        Map<String, Object> row = ZES_gv_workOrderMapper.ZES_selectOpcUaWorkItemByWorkOrderCode(workOrderCode);
+        if (row == null) return null;
+        return new ZES_opcUaWorkItem(
+                ZES_toStringOrEmpty(row.get("product_code")),
+                ZES_toStringOrEmpty(row.get("product_name")),
+                ZES_toStringOrEmpty(row.get("serial_code")),
+                ZES_toStringOrEmpty(row.get("process_row")),
+                ZES_toStringOrEmpty(row.get("work_order_code")),
+                ZES_toStringOrEmpty(row.get("deadline")),
+                ZES_toStringOrEmpty(row.get("target_production")),
+                ZES_toStringOrEmpty(row.get("facility_name")),
+                ZES_toStringOrEmpty(row.get("facility_code")),
+                ZES_toStringOrEmpty(row.get("process_defect_code")),
+                ZES_toStringOrEmpty(row.get("process_defect_name")),
+                ZES_toStringOrEmpty(row.get("company_code"))
+        );
+    }
+
     private ZES_opcUaWorkItem ZES_toWorkItem(JSONObject ZES_lv_workOrderRow)
     {
         return new ZES_opcUaWorkItem(
