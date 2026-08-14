@@ -404,13 +404,15 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
                 }
                 if(!workingHistoryRestored){
                     workStatus.setValue(new DataValue(new Variant((short)0)));
+                    workMode.setValue(new DataValue(new Variant((short)0)));
                     activeWorkMode[0]=0;
+                    lastWorkModeCommand[0]=0;
                     workStartCaptured[0]=false;
                     workStartTime[0]="0000-00-00 00:00:00";
                     workSeconds[0]=0L;
                     lastTimerMillis[0]=System.currentTimeMillis();
                     workTime.setValue(new DataValue(new Variant("00:00:00")));
-                    System.out.println("[OPC-UA][WORK-HISTORY-RESTORE] no working history found, workStatus=0, workTime=00:00:00");
+                    System.out.println("[OPC-UA][WORK-HISTORY-RESTORE] no working history found, workStatus=0, workMode=0, workTime=00:00:00");
                 }
             }
 
