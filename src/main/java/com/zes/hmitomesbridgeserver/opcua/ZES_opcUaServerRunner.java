@@ -92,6 +92,7 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
 
         UaVariableNode ict=rwInt32(ctx,ns,"LS_EXP2/selectedIctNumber","selectedIctNumber",0);
         UaVariableNode requestManage=rwInt16(ctx,ns,"LS_EXP2/request_manage","request_manage",(short)0);
+        UaVariableNode resultTag=rwInt16(ctx,ns,"LS_EXP2/ResultTag","ResultTag",(short)0);
         UaVariableNode enter=rwBool(ctx,ns,"LS_EXP2/workOrderPageEnter","workOrderPageEnter",false);
         UaVariableNode workMode=rwInt16(ctx,ns,"LS_EXP2/workMode","workMode",(short)0);
         UaVariableNode workStatus=rwInt16(ctx,ns,"LS_EXP2/workStatus","workStatus",(short)0);
