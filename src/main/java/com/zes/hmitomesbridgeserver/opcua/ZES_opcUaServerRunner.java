@@ -365,6 +365,11 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
                     if(history == null || !"working".equalsIgnoreCase(history.workStatement())) continue;
                     LocalDateTime startTime=ZES_parseWorkStartTime(history.startTime());
                     if(startTime != null){
+                        long restoreTimerMillis=System.currentTimeMillis();
+                        long restoreElapsedSeconds=(restoreTimerMillis-lastTimerMillis[0])/1000L;
+                        if(restoreElapsedSeconds > 0 && activeWorkMode[0] == 2){
+                            pauseSeconds[0]+=restoreElapsedSeconds;
+                        }
                         LocalDateTime now=LocalDateTime.now();
                         long totalElapsedSeconds=Math.max(0L, ChronoUnit.SECONDS.between(startTime, now));
                         workSeconds[0]=Math.max(0L, totalElapsedSeconds-pauseSeconds[0]);
@@ -376,7 +381,7 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
                             restoredWorkMode=1;
                         }
                         activeWorkMode[0]=restoredWorkMode == 2?(short)2:(short)1;
-                        lastTimerMillis[0]=System.currentTimeMillis();
+                        lastTimerMillis[0]=restoreTimerMillis;
                         workStatus.setValue(new DataValue(new Variant((short)1)));
                         workTime.setValue(new DataValue(new Variant(ZES_formatElapsedTime(workSeconds[0]))));
                         selectedWorkItem[0]=requestedItem;
@@ -384,7 +389,7 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
                         activeWorkHistoryCode[0]=history.workHistoryCode();
                         activeCompanyCode[0]=history.companyCode();
                         registerResponse[0]=ZES_buildRestoredRegisterResponse(history);
-                        System.out.println("[OPC-UA][WORK-HISTORY-RESTORE] workOrderCode="+requestedItem.work_order_code()+", serialCode="+requestedItem.serial_code()+", productName="+requestedItem.product_name()+", startTime="+workStartTime[0]+", workTime="+ZES_formatElapsedTime(workSeconds[0])+", workStatus=1, workMode="+restoredWorkMode);
+                        System.out.println("[OPC-UA][WORK-HISTORY-RESTORE] workOrderCode="+requestedItem.work_order_code()+", serialCode="+requestedItem.serial_code()+", productName="+requestedItem.product_name()+", startTime="+workStartTime[0]+", totalElapsedSeconds="+totalElapsedSeconds+", pauseSeconds="+pauseSeconds[0]+", workTime="+ZES_formatElapsedTime(workSeconds[0])+", workStatus=1, workMode="+restoredWorkMode);
                         workingHistoryRestored=true;
                         break;
                     }
