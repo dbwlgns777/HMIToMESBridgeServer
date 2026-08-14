@@ -94,6 +94,7 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
         UaVariableNode requestManage=rwInt16(ctx,ns,"LS_EXP2/request_manage","request_manage",(short)0);
         UaVariableNode resultTag=rwInt16(ctx,ns,"LS_EXP2/ResultTag","ResultTag",(short)0);
         UaVariableNode enter=rwBool(ctx,ns,"LS_EXP2/workOrderPageEnter","workOrderPageEnter",false);
+        UaVariableNode workMode=rwInt16(ctx,ns,"LS_EXP2/workMode","workMode",(short)0);
         UaVariableNode workStatus=rwInt16(ctx,ns,"LS_EXP2/workStatus","workStatus",(short)0);
         UaVariableNode workTime=roString(ctx,ns,"LS_EXP2/workTime","workTime","00:00:00");
         UaVariableNode pauseTime=roString(ctx,ns,"LS_EXP2/pauseTime","pauseTime","00:00:00");
@@ -116,7 +117,7 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
         UaVariableNode processDefectName=roString(ctx,ns,"LS_EXP2/process_defect_name","process_defect_name","");
         UaVariableNode companyCode=roString(ctx,ns,"LS_EXP2/company_code","company_code","");
         UaVariableNode targetGoalDetail=roInt16(ctx,ns,"LS_EXP2/targetGoalDetail","targetGoalDetail",(short)0);
-        add(nm,server,root,ict);add(nm,server,root,requestManage);add(nm,server,root,resultTag);add(nm,server,root,enter);add(nm,server,root,workStatus);add(nm,server,root,workTime);add(nm,server,root,pauseTime);add(nm,server,root,goodQuantity);add(nm,server,root,totalDefectiveQuantity);add(nm,server,root,totalPauseTime);add(nm,server,root,page);add(nm,server,root,plus);add(nm,server,root,minus);add(nm,server,root,totalPage);
+        add(nm,server,root,ict);add(nm,server,root,requestManage);add(nm,server,root,enter);add(nm,server,root,workMode);add(nm,server,root,workStatus);add(nm,server,root,workTime);add(nm,server,root,pauseTime);add(nm,server,root,goodQuantity);add(nm,server,root,totalDefectiveQuantity);add(nm,server,root,totalPauseTime);add(nm,server,root,page);add(nm,server,root,plus);add(nm,server,root,minus);add(nm,server,root,totalPage);
         add(nm,server,root,selectedRow);add(nm,server,root,serialCodeDetail);add(nm,server,root,productNameDetail);add(nm,server,root,workOrderCodeDetail);add(nm,server,root,processDetail);add(nm,server,root,processCodeDetail);add(nm,server,root,facilityName);add(nm,server,root,facilityCode);add(nm,server,root,processDefectCode);add(nm,server,root,processDefectName);add(nm,server,root,companyCode);add(nm,server,root,targetGoalDetail);
 
         UaVariableNode[] serial=new UaVariableNode[5], pname=new UaVariableNode[5], target=new UaVariableNode[5], process=new UaVariableNode[5], deadline=new UaVariableNode[5], processCode=new UaVariableNode[5], workOrderCode=new UaVariableNode[5];
@@ -125,19 +126,21 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
             processCode[i]=roString(ctx,ns,"LS_EXP2/row"+r+"/process_code","process_code_row"+r,""); workOrderCode[i]=roString(ctx,ns,"LS_EXP2/row"+r+"/workOrderCode","workOrderCode_row"+r,"");
             add(nm,server,root,serial[i]);add(nm,server,root,pname[i]);add(nm,server,root,target[i]);add(nm,server,root,process[i]);add(nm,server,root,deadline[i]);add(nm,server,root,processCode[i]);add(nm,server,root,workOrderCode[i]);}
 
-        ScheduledExecutorService sch= Executors.newSingleThreadScheduledExecutor(); final short[] cur={1}; final short[] totalPages={1}; final String[] lastIct={""}; final String[] lastValidIct={""}; final boolean[] lastEnter={false}; final boolean[] workItemsLoaded={false}; final List<ZES_opcUaWorkItem>[] cachedItems=new List[]{List.of()}; final Map<Short, List<ZES_opcUaWorkItem>> pageCache=new HashMap<>(); final long[] workSeconds={0L}; final long[] pauseSeconds={0L}; final long[] lastTimerMillis={System.currentTimeMillis()}; final short[] activeWorkStatus={(short)0}; final boolean[] workStartCaptured={false}; final String[] workStartTime={"0000-00-00 00:00:00"}; final String[] workEndTime={"0000-00-00 00:00:00"}; final ZES_opcUaWorkItem[] selectedWorkItem={ZES_emptyWorkItem()}; final JSONObject[] registerResponse={null}; final String[] activeWorkHistoryCode={""}; final String[] activeCompanyCode={""};
+        ScheduledExecutorService sch= Executors.newSingleThreadScheduledExecutor(); final short[] cur={1}; final short[] totalPages={1}; final String[] lastIct={""}; final String[] lastValidIct={""}; final boolean[] lastEnter={false}; final boolean[] workItemsLoaded={false}; final List<ZES_opcUaWorkItem>[] cachedItems=new List[]{List.of()}; final Map<Short, List<ZES_opcUaWorkItem>> pageCache=new HashMap<>(); final long[] workSeconds={0L}; final long[] pauseSeconds={0L}; final long[] lastTimerMillis={System.currentTimeMillis()}; final short[] activeWorkMode={(short)0}; final short[] lastWorkModeCommand={(short)0}; final boolean[] workStartCaptured={false}; final String[] workStartTime={"0000-00-00 00:00:00"}; final String[] workEndTime={"0000-00-00 00:00:00"}; final ZES_opcUaWorkItem[] selectedWorkItem={ZES_emptyWorkItem()}; final JSONObject[] registerResponse={null}; final String[] activeWorkHistoryCode={""}; final String[] activeCompanyCode={""};
         sch.scheduleAtFixedRate(()->{
             try {
             long timerNow=System.currentTimeMillis();
-            short workStatusNow=ZES_readInt16Safe(workStatus);
+            short workModeNow=ZES_readInt16Safe(workMode);
             long elapsedSeconds=(timerNow-lastTimerMillis[0])/1000L;
             if(elapsedSeconds > 0){
-                if(activeWorkStatus[0] == 1) workSeconds[0]+=elapsedSeconds;
-                if(activeWorkStatus[0] == 2) pauseSeconds[0]+=elapsedSeconds;
+                if(activeWorkMode[0] == 1) workSeconds[0]+=elapsedSeconds;
+                if(activeWorkMode[0] == 2) pauseSeconds[0]+=elapsedSeconds;
                 lastTimerMillis[0]+=elapsedSeconds*1000L;
             }
-            if(workStatusNow != activeWorkStatus[0]){
-                if(workStatusNow == 1 && !workStartCaptured[0]){
+            if(workModeNow == 0){
+                lastWorkModeCommand[0]=0;
+            } else if(workModeNow != lastWorkModeCommand[0]){
+                if(workModeNow == 1 && !workStartCaptured[0]){
                     ZES_opcUaWorkItem workStartItem=selectedWorkItem[0];
                     ZES_workHistoryState existingHistory=ZES_gv_workItemProvider.ZES_getLatestActiveWorkHistory(workStartItem.work_order_code());
                     if(existingHistory != null && "working".equalsIgnoreCase(existingHistory.workStatement())){
@@ -145,32 +148,34 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
                         activeWorkHistoryCode[0]=existingHistory.workHistoryCode();
                         activeCompanyCode[0]=existingHistory.companyCode();
                         registerResponse[0]=ZES_buildRestoredRegisterResponse(existingHistory);
-                        workStatus.setValue(new DataValue(new Variant((short)5)));
-                        workStatusNow=5;
-                        System.out.println("[OPC-UA][WORK-START-SKIP] existing working history, workStatus=5, workHistoryCode="+activeWorkHistoryCode[0]);
+                        workStatus.setValue(new DataValue(new Variant((short)1)));
+                        activeWorkMode[0]=1;
+                        System.out.println("[OPC-UA][WORK-START-SKIP] existing working history, workStatus=1, workHistoryCode="+activeWorkHistoryCode[0]);
                     } else if(workStartItem.work_order_code().isBlank()){
                         workStatus.setValue(new DataValue(new Variant((short)0)));
-                        workStatusNow=0;
                         System.out.println("[OPC-UA][WORK-START-SKIP] selected work order is empty");
                     } else {
                         workStartTime[0]=ZES_formatCurrentTime();
                         JSONObject startPayload=ZES_buildWorkStartPayload(companyCode, facilityCode, workOrderCodeDetail, workStartTime[0]);
                         JSONObject response=ZES_sendWorkHistoryPayload(WORK_HISTORY_REGISTER_URL, "REGISTER", startPayload);
-                        ZES_workHistoryState registeredState=ZES_extractRegisteredWorkHistory(response, ZES_readNodeValueAsString(companyCode), workStartTime[0]);
+                        ZES_workHistoryState registeredState=ZES_extractRegisteredWorkHistory(response, workStartItem.work_order_code(), ZES_readNodeValueAsString(companyCode), workStartTime[0]);
                         if(registeredState == null){
                             workStatus.setValue(new DataValue(new Variant((short)0)));
-                            workStatusNow=0;
                             System.out.println("[OPC-UA][WORK-START-FAIL] register response did not contain workHistoryCode");
                         } else {
                             registerResponse[0]=response;
                             activeWorkHistoryCode[0]=registeredState.workHistoryCode();
                             activeCompanyCode[0]=registeredState.companyCode();
                             workStartCaptured[0]=true;
-                            System.out.println("[OPC-UA][WORK-START] workStatus=1, workStartTime="+workStartTime[0]+", workHistoryCode="+activeWorkHistoryCode[0]);
+                            activeWorkMode[0]=1;
+                            workStatus.setValue(new DataValue(new Variant((short)0)));
+                            System.out.println("[OPC-UA][WORK-START] workMode=1, workStatus=0, workStartTime="+workStartTime[0]+", workHistoryCode="+activeWorkHistoryCode[0]);
                         }
                     }
                 }
-                if(workStatusNow == 3){
+                if(workModeNow == 1 && workStartCaptured[0]) activeWorkMode[0]=1;
+                if(workModeNow == 2 && workStartCaptured[0]) activeWorkMode[0]=2;
+                if(workModeNow == 3){
                     workEndTime[0]=ZES_formatCurrentTime();
                     ZES_opcUaWorkItem workEndItem=selectedWorkItem[0];
                     System.out.println("[OPC-UA][WORK-END-DEBUG] workStatus=3, workStartTime="+workStartTime[0]+", workEndTime="+workEndTime[0]
@@ -192,17 +197,7 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
                             +", totalDefectiveQuantity="+totalDefectiveQuantity.getValue().getValue().getValue()
                             +", totalPauseTime="+totalPauseTime.getValue().getValue().getValue());
                     ZES_workHistoryState currentHistory=ZES_gv_workItemProvider.ZES_getActiveWorkHistory(activeWorkHistoryCode[0]);
-                    if(currentHistory == null || !"working".equalsIgnoreCase(currentHistory.workStatement())){
-                        workStatus.setValue(new DataValue(new Variant((short)6)));
-                        workStatusNow=6;
-                        System.out.println("[OPC-UA][WORK-END-SKIP] history is not working, workStatus=6, workHistoryCode="+activeWorkHistoryCode[0]);
-                    } else if(ZES_gv_workItemProvider.ZES_hasOtherWorkingHistory(
-                            activeCompanyCode[0].isBlank()?currentHistory.companyCode():activeCompanyCode[0],
-                            currentHistory.workHistoryCode())){
-                        workStatus.setValue(new DataValue(new Variant((short)7)));
-                        workStatusNow=7;
-                        System.out.println("[OPC-UA][WORK-END-SKIP] another working history exists, workStatus=7, companyCode="+currentHistory.companyCode());
-                    } else {
+                    if(currentHistory != null && "working".equalsIgnoreCase(currentHistory.workStatement())){
                     ZES_sendWorkHistoryUpdateIfRegisterSuccess(
                             registerResponse[0],
                             companyCode,
@@ -227,11 +222,41 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
                     workTime.setValue(new DataValue(new Variant("00:00:00")));
                     pauseTime.setValue(new DataValue(new Variant("00:00:00")));
                     workStatus.setValue(new DataValue(new Variant((short)0)));
-                    workStatusNow=0;
                     System.out.println("[OPC-UA][WORK-END-DEBUG] workStartTime and workEndTime reset to 0000-00-00 00:00:00, workTime and pauseTime reset to 00:00:00, workStatus reset to 0 after work end debug log");
+                    activeWorkMode[0]=0;
+                    } else {
+                        ZES_workHistoryState otherHistory=ZES_gv_workItemProvider.ZES_getOtherWorkingHistory(
+                                activeCompanyCode[0].isBlank() && currentHistory != null?currentHistory.companyCode():activeCompanyCode[0],
+                                activeWorkHistoryCode[0]);
+                        if(otherHistory == null){
+                            workStatus.setValue(new DataValue(new Variant((short)2)));
+                            activeWorkMode[0]=0;
+                            System.out.println("[OPC-UA][WORK-END-SKIP] current history ended and no other working history, workStatus=2");
+                        } else {
+                            ZES_opcUaWorkItem otherItem=ZES_findWorkItem(pageCache, otherHistory.workOrderCode());
+                            if(otherItem.work_order_code().isBlank()){
+                                ZES_opcUaWorkItem dbItem=ZES_gv_workItemProvider.ZES_getWorkItemByWorkOrderCode(otherHistory.workOrderCode());
+                                if(dbItem != null) otherItem=dbItem;
+                            }
+                            if(otherItem.work_order_code().isBlank()){
+                                workStatus.setValue(new DataValue(new Variant((short)2)));
+                                activeWorkMode[0]=0;
+                                System.out.println("[OPC-UA][WORK-END-SKIP] other working item details not found, workStatus=2");
+                            } else {
+                                ZES_restoreWorkingHistory(otherHistory, otherItem, workStatus, workTime, serialCodeDetail, productNameDetail, workOrderCodeDetail, processDetail, processCodeDetail, facilityName, facilityCode, processDefectCode, processDefectName, companyCode, targetGoalDetail, selectedWorkItem, workSeconds, workStartTime, workStartCaptured, lastTimerMillis);
+                                activeWorkHistoryCode[0]=otherHistory.workHistoryCode();
+                                activeCompanyCode[0]=otherHistory.companyCode();
+                                registerResponse[0]=ZES_buildRestoredRegisterResponse(otherHistory);
+                                activeWorkMode[0]=1;
+                                workStatus.setValue(new DataValue(new Variant((short)3)));
+                                System.out.println("[OPC-UA][WORK-HISTORY-SWITCH] switched to other working history, workStatus=3, workHistoryCode="+otherHistory.workHistoryCode());
+                            }
+                        }
                     }
+                    workMode.setValue(new DataValue(new Variant((short)0)));
+                    workModeNow=0;
                 }
-                activeWorkStatus[0]=workStatusNow;
+                lastWorkModeCommand[0]=workModeNow;
                 lastTimerMillis[0]=timerNow;
             }
             workTime.setValue(new DataValue(new Variant(ZES_formatElapsedTime(workSeconds[0]))));
@@ -342,23 +367,23 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
                         workSeconds[0]=Math.max(0L, ChronoUnit.SECONDS.between(startTime, now));
                         workStartTime[0]=startTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
                         workStartCaptured[0]=true;
-                        activeWorkStatus[0]=5;
+                        activeWorkMode[0]=1;
                         lastTimerMillis[0]=System.currentTimeMillis();
-                        workStatus.setValue(new DataValue(new Variant((short)5)));
+                        workStatus.setValue(new DataValue(new Variant((short)1)));
                         workTime.setValue(new DataValue(new Variant(ZES_formatElapsedTime(workSeconds[0]))));
                         selectedWorkItem[0]=requestedItem;
                         ZES_setWorkItemDetailTags(requestedItem, serialCodeDetail, productNameDetail, workOrderCodeDetail, processDetail, processCodeDetail, facilityName, facilityCode, processDefectCode, processDefectName, companyCode, targetGoalDetail);
                         activeWorkHistoryCode[0]=history.workHistoryCode();
                         activeCompanyCode[0]=history.companyCode();
                         registerResponse[0]=ZES_buildRestoredRegisterResponse(history);
-                        System.out.println("[OPC-UA][WORK-HISTORY-RESTORE] workOrderCode="+requestedItem.work_order_code()+", serialCode="+requestedItem.serial_code()+", productName="+requestedItem.product_name()+", startTime="+workStartTime[0]+", workTime="+ZES_formatElapsedTime(workSeconds[0])+", workStatus=5");
+                        System.out.println("[OPC-UA][WORK-HISTORY-RESTORE] workOrderCode="+requestedItem.work_order_code()+", serialCode="+requestedItem.serial_code()+", productName="+requestedItem.product_name()+", startTime="+workStartTime[0]+", workTime="+ZES_formatElapsedTime(workSeconds[0])+", workStatus=1");
                         workingHistoryRestored=true;
                         break;
                     }
                 }
                 if(!workingHistoryRestored){
                     workStatus.setValue(new DataValue(new Variant((short)0)));
-                    activeWorkStatus[0]=0;
+                    activeWorkMode[0]=0;
                     workStartCaptured[0]=false;
                     workStartTime[0]="0000-00-00 00:00:00";
                     workSeconds[0]=0L;
@@ -422,7 +447,7 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
         return workEndPayload;
     }
 
-    private ZES_workHistoryState ZES_extractRegisteredWorkHistory(JSONObject response, String fallbackCompanyCode, String startTime)
+    private ZES_workHistoryState ZES_extractRegisteredWorkHistory(JSONObject response, String workOrderCode, String fallbackCompanyCode, String startTime)
     {
         if(response == null || !"success".equalsIgnoreCase(ZES_readJsonValueAsString(response.get("message")))) return null;
         JSONObject data=ZES_toJsonObject(response.get("data"));
@@ -431,7 +456,7 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
         if(workHistoryCode.isBlank()) return null;
         String companyCode=ZES_firstNonBlank(data, "companyCode", "company_code");
         if(companyCode.isBlank()) companyCode=fallbackCompanyCode;
-        return new ZES_workHistoryState(workHistoryCode, companyCode, "working", startTime);
+        return new ZES_workHistoryState(workHistoryCode, workOrderCode, companyCode, "working", startTime);
     }
 
     private JSONObject ZES_buildRestoredRegisterResponse(ZES_workHistoryState history)
@@ -678,6 +703,17 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
         return new ZES_opcUaWorkItem("", "", "", "", "", "", "", "", "", "", "", "");
     }
 
+    private ZES_opcUaWorkItem ZES_findWorkItem(Map<Short, List<ZES_opcUaWorkItem>> pageCache, String workOrderCode)
+    {
+        if(workOrderCode == null || workOrderCode.isBlank()) return ZES_emptyWorkItem();
+        for(List<ZES_opcUaWorkItem> pageItems : pageCache.values()){
+            for(ZES_opcUaWorkItem item : pageItems){
+                if(workOrderCode.equals(item.work_order_code())) return item;
+            }
+        }
+        return ZES_emptyWorkItem();
+    }
+
     private void ZES_restoreWorkingHistory(
             ZES_workHistoryState history,
             ZES_opcUaWorkItem item,
@@ -706,7 +742,7 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
         workStartTime[0]=startTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
         workStartCaptured[0]=true;
         lastTimerMillis[0]=System.currentTimeMillis();
-        workStatus.setValue(new DataValue(new Variant((short)5)));
+        workStatus.setValue(new DataValue(new Variant((short)1)));
         workTime.setValue(new DataValue(new Variant(ZES_formatElapsedTime(workSeconds[0]))));
         selectedWorkItem[0]=item;
         ZES_setWorkItemDetailTags(item, serialCodeDetail, productNameDetail, workOrderCodeDetail, processDetail, processCodeDetail, facilityName, facilityCode, processDefectCode, processDefectName, companyCode, targetGoalDetail);

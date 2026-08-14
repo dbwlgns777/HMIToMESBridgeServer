@@ -174,7 +174,7 @@ public interface ZES_workOrderMapper
                                                                   @Param("offset") int offset);
 
     @Select("""
-            select work_history_code, company_code, work_statement, start_time
+            select work_history_code, work_order_code, company_code, work_statement, start_time
             from ZES_Authentication.zes_work_history_info
             where work_order_code = #{workOrderCode}
               and statement = 'active'
@@ -184,7 +184,7 @@ public interface ZES_workOrderMapper
     Map<String, Object> ZES_selectLatestActiveWorkHistoryByWorkOrderCode(@Param("workOrderCode") String workOrderCode);
 
     @Select("""
-            select work_history_code, company_code, work_statement, start_time
+            select work_history_code, work_order_code, company_code, work_statement, start_time
             from ZES_Authentication.zes_work_history_info
             where work_history_code = #{workHistoryCode}
               and statement = 'active'
@@ -193,13 +193,38 @@ public interface ZES_workOrderMapper
     Map<String, Object> ZES_selectActiveWorkHistoryByCode(@Param("workHistoryCode") String workHistoryCode);
 
     @Select("""
-            select count(*)
+            select work_history_code, work_order_code, company_code, work_statement, start_time
             from ZES_Authentication.zes_work_history_info
             where company_code = #{companyCode}
               and work_statement = 'working'
               and statement = 'active'
               and work_history_code != #{workHistoryCode}
+            order by start_time desc
+            limit 1
             """)
-    int ZES_countOtherWorkingHistory(@Param("companyCode") String companyCode,
-                                     @Param("workHistoryCode") String workHistoryCode);
+    Map<String, Object> ZES_selectOtherWorkingHistory(@Param("companyCode") String companyCode,
+                                                       @Param("workHistoryCode") String workHistoryCode);
+
+    @Select("""
+            select p.product_code, p.product_name, p.serial_code,
+                   coalesce(pt.process_name, '') as process_row,
+                   f.facility_name, f.facility_code, w.company_code,
+                   pd.process_defect_code, pd.process_defect_name,
+                   w.work_order_code, w.deadline, w.target_production
+            from ZES_Authentication.zes_work_order_info w
+            join ZES_Authentication.zes_product_info p
+              on p.product_code = w.product_code and p.statement = 'active'
+            left join ZES_Authentication.zes_process_type_info pt
+              on pt.process_code = p.process_code and pt.statement = 'active'
+            left join ZES_Authentication.zes_process_defect_info pd
+              on pd.process_code = p.process_code
+             and pd.process_defect_name = '기타'
+             and pd.statement = 'active'
+            left join ZES_Authentication.zes_facility_info f
+              on f.facility_code = w.facility_code and f.statement = 'active'
+            where w.work_order_code = #{workOrderCode}
+              and w.statement = 'active'
+            limit 1
+            """)
+    Map<String, Object> ZES_selectOpcUaWorkItemByWorkOrderCode(@Param("workOrderCode") String workOrderCode);
 }

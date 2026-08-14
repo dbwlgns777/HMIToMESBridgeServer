@@ -12,5 +12,7 @@ public interface ZES_opcUaWorkItemProvider
 
     ZES_workHistoryState ZES_getActiveWorkHistory(String workHistoryCode);
 
-    boolean ZES_hasOtherWorkingHistory(String companyCode, String workHistoryCode);
+    ZES_workHistoryState ZES_getOtherWorkingHistory(String companyCode, String workHistoryCode);
+
+    ZES_opcUaWorkItem ZES_getWorkItemByWorkOrderCode(String workOrderCode);
 }
