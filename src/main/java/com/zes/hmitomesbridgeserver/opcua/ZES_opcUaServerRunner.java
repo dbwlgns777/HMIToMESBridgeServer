@@ -232,8 +232,10 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
                             workTime.setValue(new DataValue(new Variant("00:00:00")));
                             pauseTime.setValue(new DataValue(new Variant("00:00:00")));
                             workStatus.setValue(new DataValue(new Variant((short)0)));
+                            workModeNow=0;
+                            workMode.setValue(new DataValue(new Variant((short)0)));
                             activeWorkMode[0]=0;
-                            System.out.println("[OPC-UA][WORK-END] update succeeded and no working history remains, workStatus=0");
+                            System.out.println("[OPC-UA][WORK-END] update succeeded and no working history remains, workStatus=0, workMode=0");
                         } else {
                             System.out.println("[OPC-UA][WORK-END] update succeeded but a working history remains, workStatus was not reset");
                         }
