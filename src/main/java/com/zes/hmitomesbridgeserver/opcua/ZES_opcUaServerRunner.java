@@ -126,21 +126,11 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
             processCode[i]=roString(ctx,ns,"LS_EXP2/row"+r+"/process_code","process_code_row"+r,""); workOrderCode[i]=roString(ctx,ns,"LS_EXP2/row"+r+"/workOrderCode","workOrderCode_row"+r,"");
             add(nm,server,root,serial[i]);add(nm,server,root,pname[i]);add(nm,server,root,target[i]);add(nm,server,root,process[i]);add(nm,server,root,deadline[i]);add(nm,server,root,processCode[i]);add(nm,server,root,workOrderCode[i]);}
 
-        ScheduledExecutorService sch= Executors.newSingleThreadScheduledExecutor(); final short[] cur={1}; final short[] totalPages={1}; final String[] lastIct={""}; final String[] lastValidIct={""}; final boolean[] lastEnter={false}; final boolean[] workItemsLoaded={false}; final List<ZES_opcUaWorkItem>[] cachedItems=new List[]{List.of()}; final Map<Short, List<ZES_opcUaWorkItem>> pageCache=new HashMap<>(); final long[] workSeconds={0L}; final long[] pauseSeconds={0L}; final long[] lastTimerMillis={System.currentTimeMillis()}; final short[] activeWorkMode={(short)0}; final short[] lastWorkModeCommand={(short)0}; final boolean[] forceWorkModeReset={false}; final boolean[] workStartCaptured={false}; final String[] workStartTime={"0000-00-00 00:00:00"}; final String[] workEndTime={"0000-00-00 00:00:00"}; final ZES_opcUaWorkItem[] selectedWorkItem={ZES_emptyWorkItem()}; final JSONObject[] registerResponse={null}; final String[] activeWorkHistoryCode={""}; final String[] activeCompanyCode={""};
+        ScheduledExecutorService sch= Executors.newSingleThreadScheduledExecutor(); final short[] cur={1}; final short[] totalPages={1}; final String[] lastIct={""}; final String[] lastValidIct={""}; final boolean[] lastEnter={false}; final boolean[] workItemsLoaded={false}; final List<ZES_opcUaWorkItem>[] cachedItems=new List[]{List.of()}; final Map<Short, List<ZES_opcUaWorkItem>> pageCache=new HashMap<>(); final long[] workSeconds={0L}; final long[] pauseSeconds={0L}; final long[] lastTimerMillis={System.currentTimeMillis()}; final short[] activeWorkMode={(short)0}; final short[] lastWorkModeCommand={(short)0}; final boolean[] workStartCaptured={false}; final String[] workStartTime={"0000-00-00 00:00:00"}; final String[] workEndTime={"0000-00-00 00:00:00"}; final ZES_opcUaWorkItem[] selectedWorkItem={ZES_emptyWorkItem()}; final JSONObject[] registerResponse={null}; final String[] activeWorkHistoryCode={""}; final String[] activeCompanyCode={""};
         sch.scheduleAtFixedRate(()->{
             try {
             long timerNow=System.currentTimeMillis();
             short workModeNow=ZES_readInt16Safe(workMode);
-            if(forceWorkModeReset[0]){
-                boolean resetAcknowledged=workModeNow == 0;
-                workModeNow=0;
-                workMode.setValue(new DataValue(new Variant((short)0)));
-                lastWorkModeCommand[0]=0;
-                if(resetAcknowledged){
-                    forceWorkModeReset[0]=false;
-                    System.out.println("[OPC-UA][WORK-MODE-RESET] HMI observed workMode=0; reset latch released");
-                }
-            }
             // Apply pause/resume mode before attributing elapsed time. Otherwise the
             // first polling interval after 1 -> 2 is incorrectly counted as work.
             if(workStartCaptured[0] && workModeNow == 1) activeWorkMode[0]=1;
@@ -244,7 +234,6 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
                             workStatus.setValue(new DataValue(new Variant((short)0)));
                             workModeNow=0;
                             workMode.setValue(new DataValue(new Variant((short)0)));
-                            forceWorkModeReset[0]=true;
                             activeWorkMode[0]=0;
                             System.out.println("[OPC-UA][WORK-END] update succeeded and no working history remains, workStatus=0, workMode=0");
                         } else {
@@ -429,7 +418,6 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
                 if(!workingHistoryRestored){
                     workStatus.setValue(new DataValue(new Variant((short)0)));
                     workMode.setValue(new DataValue(new Variant((short)0)));
-                    forceWorkModeReset[0]=true;
                     activeWorkMode[0]=0;
                     lastWorkModeCommand[0]=0;
                     workStartCaptured[0]=false;
