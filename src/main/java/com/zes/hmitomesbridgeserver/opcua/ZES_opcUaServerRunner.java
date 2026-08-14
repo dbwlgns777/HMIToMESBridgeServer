@@ -248,6 +248,8 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
                                 activeWorkMode[0]=0;
                                 System.out.println("[OPC-UA][WORK-END-SKIP] other working item details not found, workStatus=2");
                             } else {
+                                pauseSeconds[0]=0L;
+                                pauseTime.setValue(new DataValue(new Variant("00:00:00")));
                                 ZES_restoreWorkingHistory(otherHistory, otherItem, workStatus, workTime, serialCodeDetail, productNameDetail, workOrderCodeDetail, processDetail, processCodeDetail, facilityName, facilityCode, processDefectCode, processDefectName, companyCode, targetGoalDetail, selectedWorkItem, workSeconds, pauseSeconds, workStartTime, workStartCaptured, lastTimerMillis);
                                 activeWorkHistoryCode[0]=otherHistory.workHistoryCode();
                                 activeCompanyCode[0]=otherHistory.companyCode();
@@ -369,9 +371,16 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
                     if(history == null || !"working".equalsIgnoreCase(history.workStatement())) continue;
                     LocalDateTime startTime=ZES_parseWorkStartTime(history.startTime());
                     if(startTime != null){
+                        short restoredWorkMode=ZES_readInt16Safe(workMode);
+                        if(restoredWorkMode == 0){
+                            pauseSeconds[0]=0L;
+                            pauseTime.setValue(new DataValue(new Variant("00:00:00")));
+                            workMode.setValue(new DataValue(new Variant((short)1)));
+                            restoredWorkMode=1;
+                        }
                         long restoreTimerMillis=System.currentTimeMillis();
                         long restoreElapsedSeconds=(restoreTimerMillis-lastTimerMillis[0])/1000L;
-                        if(restoreElapsedSeconds > 0 && activeWorkMode[0] == 2){
+                        if(restoreElapsedSeconds > 0 && restoredWorkMode == 2){
                             pauseSeconds[0]+=restoreElapsedSeconds;
                         }
                         LocalDateTime now=LocalDateTime.now();
@@ -379,11 +388,6 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
                         workSeconds[0]=Math.max(0L, totalElapsedSeconds-pauseSeconds[0]);
                         workStartTime[0]=startTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
                         workStartCaptured[0]=true;
-                        short restoredWorkMode=ZES_readInt16Safe(workMode);
-                        if(restoredWorkMode == 0){
-                            workMode.setValue(new DataValue(new Variant((short)1)));
-                            restoredWorkMode=1;
-                        }
                         activeWorkMode[0]=restoredWorkMode == 2?(short)2:(short)1;
                         lastTimerMillis[0]=restoreTimerMillis;
                         workStatus.setValue(new DataValue(new Variant((short)1)));
