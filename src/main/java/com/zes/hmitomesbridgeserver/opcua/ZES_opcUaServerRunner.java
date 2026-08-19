@@ -126,7 +126,7 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
             processCode[i]=roString(ctx,ns,"LS_EXP2/row"+r+"/process_code","process_code_row"+r,""); workOrderCode[i]=roString(ctx,ns,"LS_EXP2/row"+r+"/workOrderCode","workOrderCode_row"+r,"");
             add(nm,server,root,serial[i]);add(nm,server,root,pname[i]);add(nm,server,root,target[i]);add(nm,server,root,process[i]);add(nm,server,root,deadline[i]);add(nm,server,root,processCode[i]);add(nm,server,root,workOrderCode[i]);}
 
-        ScheduledExecutorService sch= Executors.newSingleThreadScheduledExecutor(); final short[] cur={1}; final short[] totalPages={1}; final String[] lastIct={""}; final String[] lastValidIct={""}; final boolean[] lastEnter={false}; final boolean[] workItemsLoaded={false}; final List<ZES_opcUaWorkItem>[] cachedItems=new List[]{List.of()}; final Map<Short, List<ZES_opcUaWorkItem>> pageCache=new HashMap<>(); final long[] workSeconds={0L}; final long[] pauseSeconds={0L}; final long[] lastTimerMillis={System.currentTimeMillis()}; final short[] activeWorkMode={(short)0}; final short[] lastWorkModeCommand={(short)0}; final boolean[] workStartCaptured={false}; final String[] workStartTime={"0000-00-00 00:00:00"}; final String[] workEndTime={"0000-00-00 00:00:00"}; final ZES_opcUaWorkItem[] selectedWorkItem={ZES_emptyWorkItem()}; final JSONObject[] registerResponse={null}; final String[] activeWorkHistoryCode={""}; final String[] activeCompanyCode={""};
+        ScheduledExecutorService sch= Executors.newSingleThreadScheduledExecutor(); final short[] cur={1}; final short[] totalPages={1}; final String[] lastIct={""}; final String[] lastValidIct={""}; final boolean[] lastEnter={false}; final boolean[] requestManagePending={false}; final boolean[] workItemsLoaded={false}; final List<ZES_opcUaWorkItem>[] cachedItems=new List[]{List.of()}; final Map<Short, List<ZES_opcUaWorkItem>> pageCache=new HashMap<>(); final long[] workSeconds={0L}; final long[] pauseSeconds={0L}; final long[] lastTimerMillis={System.currentTimeMillis()}; final short[] activeWorkMode={(short)0}; final short[] lastWorkModeCommand={(short)0}; final boolean[] workStartCaptured={false}; final String[] workStartTime={"0000-00-00 00:00:00"}; final String[] workEndTime={"0000-00-00 00:00:00"}; final ZES_opcUaWorkItem[] selectedWorkItem={ZES_emptyWorkItem()}; final JSONObject[] registerResponse={null}; final String[] activeWorkHistoryCode={""}; final String[] activeCompanyCode={""};
         sch.scheduleAtFixedRate(()->{
             try {
             long timerNow=System.currentTimeMillis();
@@ -282,6 +282,11 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
             }
             workTime.setValue(new DataValue(new Variant(ZES_formatElapsedTime(workSeconds[0]))));
             pauseTime.setValue(new DataValue(new Variant(ZES_formatElapsedTime(pauseSeconds[0]))));
+            short requestManageNow=ZES_readInt16Safe(requestManage);
+            if(requestManageNow == 1 && !requestManagePending[0]){
+                requestManagePending[0]=true;
+                System.out.println("[OPC-UA][REQUEST-MANAGE] request_manage=1 latched; waiting for a valid selectedIctNumber");
+            }
             String ictRaw=ZES_readIctNumberSafe(ict);
             String ictNo=ZES_sanitizeIctNumber(ictRaw);
             System.out.println("[OPC-UA][ICT-TAG] rawType=" + (ict.getValue().getValue().getValue()==null?"null":ict.getValue().getValue().getValue().getClass().getName()) + ", raw=" + ictRaw + ", sanitized=" + ictNo);
@@ -293,21 +298,21 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
             lastEnter[0]=enterNow;
             String queryIctRaw = lastValidIct[0];
             if (queryIctRaw.isEmpty()) {
-                System.out.println("[OPC-UA][ICT-TAG] waiting for valid HMI ict_number input...");
+                System.out.println("[OPC-UA][ICT-TAG] waiting for valid HMI ict_number input... requestManagePending="+requestManagePending[0]);
                 return;
             }
             String queryIct = ZES_normalizeIctNumberForDb(queryIctRaw);
             if (queryIct.isEmpty()) {
-                System.out.println("[OPC-UA][ICT-TAG] waiting for normalized ict_number for DB select... raw="+queryIctRaw);
+                System.out.println("[OPC-UA][ICT-TAG] waiting for normalized ict_number for DB select... raw="+queryIctRaw+", requestManagePending="+requestManagePending[0]);
                 return;
             }
-            short requestManageNow=ZES_readInt16Safe(requestManage);
-            boolean requestManageTriggered=requestManageNow == 1;
+            boolean requestManageTriggered=requestManagePending[0];
             List<ZES_opcUaWorkItem> requestManageItems=new ArrayList<>();
             boolean ictChanged=!queryIct.equals(lastIct[0]);
             if(ictChanged){ lastIct[0]=queryIct; cur[0]=1; totalPages[0]=1; workItemsLoaded[0]=false; pageCache.clear(); cachedItems[0]=List.of(); page.setValue(new DataValue(new Variant((short)1))); }
             if(enterEdge){ cur[0]=1; page.setValue(new DataValue(new Variant((short)1))); enter.setValue(new DataValue(new Variant(false))); }
-            if(requestManageNow == 1){
+            if(requestManageTriggered){
+                requestManagePending[0]=false;
                 cur[0]=1;
                 totalPages[0]=1;
                 pageCache.clear();
