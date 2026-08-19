@@ -283,17 +283,18 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
             workTime.setValue(new DataValue(new Variant(ZES_formatElapsedTime(workSeconds[0]))));
             pauseTime.setValue(new DataValue(new Variant(ZES_formatElapsedTime(pauseSeconds[0]))));
             short requestManageNow=ZES_readInt16Safe(requestManage);
+            boolean enterNow=Boolean.TRUE.equals(enter.getValue().getValue().getValue());
+            String ictRaw=ZES_readIctNumberSafe(ict);
+            System.out.println("[OPC-UA][RAW] ICT="+ictRaw+", request_manage="+requestManageNow+", workMode="+workModeNow+", enter="+enterNow+", requestManagePending="+requestManagePending[0]);
             if(requestManageNow == 1 && !requestManagePending[0]){
                 requestManagePending[0]=true;
                 System.out.println("[OPC-UA][REQUEST-MANAGE] request_manage=1 latched; waiting for a valid selectedIctNumber");
             }
-            String ictRaw=ZES_readIctNumberSafe(ict);
             String ictNo=ZES_sanitizeIctNumber(ictRaw);
             System.out.println("[OPC-UA][ICT-TAG] rawType=" + (ict.getValue().getValue().getValue()==null?"null":ict.getValue().getValue().getValue().getClass().getName()) + ", raw=" + ictRaw + ", sanitized=" + ictNo);
             if (!ictNo.isEmpty()) {
                 lastValidIct[0] = ictNo;
             }
-            boolean enterNow=Boolean.TRUE.equals(enter.getValue().getValue().getValue());
             boolean enterEdge=!lastEnter[0] && enterNow;
             lastEnter[0]=enterNow;
             String queryIctRaw = lastValidIct[0];
@@ -312,7 +313,6 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
             if(ictChanged){ lastIct[0]=queryIct; cur[0]=1; totalPages[0]=1; workItemsLoaded[0]=false; pageCache.clear(); cachedItems[0]=List.of(); page.setValue(new DataValue(new Variant((short)1))); }
             if(enterEdge){ cur[0]=1; page.setValue(new DataValue(new Variant((short)1))); enter.setValue(new DataValue(new Variant(false))); }
             if(requestManageTriggered){
-                requestManagePending[0]=false;
                 cur[0]=1;
                 totalPages[0]=1;
                 pageCache.clear();
@@ -333,9 +333,8 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
                     totalPages[0]=(short)Math.max(1,(cachedItems[0].size()+WORK_ITEMS_PAGE_SIZE-1)/WORK_ITEMS_PAGE_SIZE);
                     requestManageItems.addAll(cachedItems[0]);
                 }
-                requestManage.setValue(new DataValue(new Variant((short)0)));
                 workItemsLoaded[0]=true;
-                System.out.println("[OPC-UA][REQUEST-MANAGE] request_manage=1, selectedIctNumber="+queryIct+", totalFetchedItems="+requestManageItems.size()+", totalPages="+totalPages[0]+", request_manage reset to 0");
+                System.out.println("[OPC-UA][REQUEST-MANAGE] DB fetch completed, selectedIctNumber="+queryIct+", totalFetchedItems="+requestManageItems.size()+", totalPages="+totalPages[0]+", request pending until tag updates complete");
             }
 
             if(!workItemsLoaded[0]){
@@ -433,6 +432,11 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
                     System.out.println("[OPC-UA][WORK-HISTORY-RESTORE] no working history found, workStatus=0, workMode=0, workTime=00:00:00");
                 }
             }
+            if(requestManageTriggered){
+                requestManage.setValue(new DataValue(new Variant((short)0)));
+                requestManagePending[0]=false;
+                System.out.println("[OPC-UA][REQUEST-MANAGE-ACK] DB fetch, OPC-UA tag updates, and work-history restore completed; request_manage=0, requestManagePending=false");
+            }
 
             System.out.println("[OPC-UA][DB-RESULT] itemCount="+items.size()+", queryIct="+queryIct+", page="+req+", selectedRow="+sel);
             for(int i=0;i<5;i++){
@@ -451,9 +455,9 @@ public class ZES_opcUaServerRunner implements ApplicationRunner {
             } catch (Exception e) {
                 System.out.println("[OPC-UA][POLLING-ERROR] polling cycle failed but scheduler will continue: "+e.getMessage());
                 e.printStackTrace(System.out);
-                if(ZES_readInt16Safe(requestManage) == 1){
-                    requestManage.setValue(new DataValue(new Variant((short)0)));
-                    System.out.println("[OPC-UA][POLLING-ERROR] request_manage reset to 0 after failed DB request");
+                if(requestManagePending[0]){
+                    requestManage.setValue(new DataValue(new Variant((short)1)));
+                    System.out.println("[OPC-UA][POLLING-ERROR] request_manage remains pending for retry; request_manage=1, requestManagePending=true");
                 }
             }
         },0,500, TimeUnit.MILLISECONDS);
